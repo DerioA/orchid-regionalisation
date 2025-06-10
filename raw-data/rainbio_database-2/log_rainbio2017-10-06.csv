@@ -1,0 +1,15 @@
+Statistic,RAINBIO.csv dataset,RAINBIO_not_or_wrong_georef.csv
+Number of unique tax_sp_level,25353,24208
+Number of unique species,29656,27000
+Number of records,614016,157885
+Number of unique family,274,314
+Number of unique genus,3157,3716
+Number of unique order,66,69
+Number of unique phylum,5,5
+Number of unique country,51,53
+Number of unique first collector,7938,5614
+Minimum latitude,-34.8328,NA
+Minimum longitude,-25.3333,NA
+Maximum latitude,37.1094,NA
+Maximum longitude,51.4,NA
+Number of unique institutionCode,13,12

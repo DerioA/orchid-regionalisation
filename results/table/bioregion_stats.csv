@@ -1,0 +1,7 @@
+Region,Hex cells,Area (km²),Total species,Unique species,Uniqueness (%),Mean sichness,Mean PD,± SD,Indicator species
+Neotropical,480,19200000.00,9540,9187,96.3,118,1148.78,1156.43,"Epidendrum_nocturnum (stat=0.624, p=0.001), Polystachya_foliosa (stat=0.563, p=0.001), Epidendrum_rigidum (stat=0.524, p=0.001)"
+Indo-Malaysian,332,13280000.00,5515,4678,84.8,67,1011.24,852.47,"Arundina_graminifolia (stat=0.496, p=0.001), Corymborkis_veratrifolia (stat=0.436, p=0.001), Calanthe_triplicata (stat=0.431, p=0.001)."
+Afrotropical,322,12880000.00,2378,2325,97.8,49.6,642.95,512.99,"Eulophia_cucullata (stat=0.568, p=0.001), Eulophia_angolensis (stat=0.517, p=0.001), Ansellia_africana (stat=0.514, p=0.001)."
+Australian,116,4640000.00,1488,1279,86,100.6,1060.87,695.75,"Microtis_unifolia (stat=0.737, p=0.001), Caladenia_carnea (stat=0.695, p=0.001), Pterostylis_nana (stat=0.681, p=0.001)."
+Holartic,936,37440000.00,1137,446,39.2,22.8,466.34,271.22,"Dactylorhiza_viridis (stat=0.651, p=0.001), Goodyera_repens (stat=0.632, p=0.001), Corallorhiza_trifida (stat=0.61, p=0.001)."
+Chile-Patagonian,15,6e+05,303,71,23.4,28.1,304.79,510.17,"Codonorchis_lessonii (stat=0.791, p=0.001), Gavilea_araucana (stat=0.745, p=0.001), Chloraea_magellanica (stat=0.698, p=0.001)."
