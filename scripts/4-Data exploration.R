@@ -25,9 +25,9 @@ library(grid)
 ### PHYLOGENETIC BETA DIVERSITY MAPPING ----
 
 # 1. Load the data
-shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce200.shp", quiet = TRUE)
+shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_200km.gpkg", quiet = TRUE)
 load("processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_200.RData") # Phylogenetic beta diversity components
-load("processed-data/community_matrix/pam/pam200_reduce.RData") # Species presence-absence matrix
+comm200 <- readRDS("processed-data/community_matrix/pam/pam_200km.rds") # Species presence-absence matrix
 
 # 2. Data processing
 # Converting distance matrix and calculating averages per site
@@ -68,13 +68,13 @@ continents <- ne_countries(
 color_palette <- rev(brewer.pal(11, "Spectral"))
 
 pb <- ggplot() +
-  geom_sf(data = continents, fill = "gray70", color = NA, alpha = 0.6) +
+  geom_sf(data = continents, fill = "grey60", colour = "grey60") +
   geom_sf(data = shape200, aes(fill = beta_sim_mean), color = NA, lwd = 0) + 
   scale_fill_gradientn(
     colours = color_palette,
-    name = expression(paste("β"[sim], " mean")),
+    name = expression("Mean " * beta * "sim"),
     na.value = "transparent",
-    breaks = c(0.40, 0.50, 0.60, 0.70, 0.80),
+    breaks = c(0.40,0.50,0.60,0.70,0.80),
     labels = function(x) ifelse(x %in% c(0, 1), as.character(x), sprintf("%.2f", x)),
     limits = c(0.40, 0.81), 
     guide = guide_colorbar(
@@ -110,7 +110,7 @@ ggsave("results/Figures/phylogenetic.beta.diversity_200km.png", pb,
 rm(list = ls())
 
 # 100KM analysis ----
-shape100 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce100.shp")
+shape100 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_100km.gpkg")
 shape100 <- st_transform(shape100, crs = 4326)
 shape100 <- as(shape100, "Spatial")
 
@@ -123,6 +123,7 @@ species.list <- orchids %>%
   as.data.frame() %>%
   mutate(Counts = 1)
 
+data(adworld)
 # Calculate completeness
 completeness100km <- KnowBPolygon(
   species.list, format = "A", shape = shape100,
@@ -139,7 +140,7 @@ completeness100km <- KnowBPolygon(
 
 ################################################################################
 # 200KM analysis ----
-shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce200.shp")
+shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_200km.gpkg")
 shape200 <- st_transform(shape200, crs = 4326)
 shape200 <- as(shape200, "Spatial")
 
@@ -158,7 +159,7 @@ completeness200km <- KnowBPolygon(
 
 ################################################################################
 # 400KM analysis ----
-shape400 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce400.shp")
+shape400 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_400km.gpkg")
 shape400 <- st_transform(shape400, crs = 4326)
 shape400 <- as(shape400, "Spatial")
 
@@ -177,7 +178,7 @@ completeness400km <- KnowBPolygon(
 
 ################################################################################
 # 800KM analysis ----
-shape800 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce800.shp")
+shape800 <- st_read(dsn = "orchid-regionalisation/processed-data/community_matrix/pam_shape/grid_800km.gpkg")
 shape800 <- st_transform(shape800, crs = 4326)
 shape800 <- as(shape800, "Spatial")
 
@@ -195,14 +196,18 @@ completeness800km <- KnowBPolygon(
   Maps = FALSE, jpg = FALSE)
 
 #####################################################################
-### Create completeness maps ----
+### Create completeness maps
 #####################################################################
 
 # Behrmann projection setup
 behrmann <- "+proj=cea +lat_ts=30 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-continents <- ne_download(scale = "medium", type = "coastline", category = "physical", returnclass = "sf")
-continents <- st_transform(continents, crs = behrmann)
+continents <- ne_countries(continent = c("Africa", "Asia", "North America",
+                                         "Europe", "Oceania", "South America"),
+                           returnclass = "sf", scale = "medium")
 
+behrmann <- "+proj=cea +lon_0=0 +lat_ts=30 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+
+map <- st_transform(continents, behrmann)
 # Color palette for quality categories
 colors <- c("#3288BD", "#FEE08B", "#D7191C")
 
@@ -210,7 +215,7 @@ colors <- c("#3288BD", "#FEE08B", "#D7191C")
 ### 100KM completeness map ----
 #####################################################################
 load("processed-data/data_exploration/Completeness/Estimators100.RData")
-shape100 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce100.shp")
+shape100 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_100km.gpkg")
 colnames(estimators)[1] <- "idcell"
 
 completeness100 <- shape100 %>% 
@@ -231,7 +236,7 @@ completeness100 <- completeness100 %>%
 table(completeness100$Quality)
 
 completenes_100km <- ggplot() +
-  geom_sf(data = continents, fill = "gray70", color = "black", linewidth = 0.05) +
+  geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = without_estimation100, fill = "gray10", color = "gray10", linewidth = 0.05) +
   geom_sf(data = completeness100, aes(fill = Quality), linewidth = 0.05, color = NA) +
   scale_fill_manual(values = colors, name = "") +
@@ -242,18 +247,19 @@ completenes_100km <- ggplot() +
     axis.ticks = element_blank(),
     panel.grid = element_blank(),
     legend.position = c(0.08, 0.7),
-    legend.background = element_rect(fill = alpha("white", 0.5), color = "black", linewidth = NA),
+    legend.background = element_rect(fill = alpha("white", 0), color = "black", linewidth = NA),
     legend.title = element_text(size = 14),
     legend.text = element_text(size = 14),
     legend.key.size = unit(0.5, "cm") ) +
     coord_sf(expand = FALSE)
 completenes_100km
+
 #####################################################################
 ### 200KM completeness map ----
 #####################################################################
 
 load("processed-data/data_exploration/Completeness/Estimators200.RData")
-shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce200.shp")
+shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_200km.gpkg")
 colnames(estimators)[1] <- "idcell"
 
 completeness200 <- shape200 %>% 
@@ -273,7 +279,7 @@ completeness200 <- completeness200 %>%
 table(completeness200$Quality)
 
 completenes_200km <- ggplot() +
-  geom_sf(data = continents, fill = "white", color = "black", linewidth = 0.05) +
+  geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = without_estimation200, fill = "gray10", color = "gray10", linewidth = 0.05) +
   geom_sf(data = completeness200, aes(fill = Quality), linewidth = 0.05, color = NA) +
   scale_fill_manual(values = colors, name = "", guide = "none") +
@@ -285,12 +291,13 @@ completenes_200km <- ggplot() +
     panel.grid = element_blank()) +
   coord_sf(expand = FALSE)
 completenes_200km
+
 #####################################################################
 ### 400KM completeness map ----
 #####################################################################
 
 load("processed-data/data_exploration/Completeness/Estimators400.RData")
-shape400 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce400.shp")
+shape400 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_400km.gpkg")
 colnames(estimators)[1] <- "idcell"
 
 completeness400 <- shape400 %>% 
@@ -310,7 +317,7 @@ completeness400 <- completeness400 %>%
 table(completeness400$Quality)
 
 completenes_400km <- ggplot() +
-  geom_sf(data = continents, fill = "white", color = "black", linewidth = 0.05) +
+  geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = without_estimation400, fill = "gray10", color = "gray10", linewidth = 0.05) +
   geom_sf(data = completeness400, aes(fill = Quality), linewidth = 0.05, color = NA) +
   scale_fill_manual(values = colors, name = "", guide = "none") +
@@ -322,12 +329,13 @@ completenes_400km <- ggplot() +
     panel.grid = element_blank()) +
   coord_sf(expand = FALSE)
 completenes_400km
+
 #####################################################################
 ### 800KM completeness map ----
 #####################################################################
 
 load("processed-data/data_exploration/Completeness/Estimators800.RData")
-shape800 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce800.shp")
+shape800 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_800km.gpkg")
 colnames(estimators)[1] <- "idcell"
 
 completeness800 <- shape800 %>% 
@@ -347,7 +355,7 @@ completeness800 <- completeness800 %>%
 table(completeness800$Quality)
          
 completenes_800km <- ggplot() +
-    geom_sf(data = continents, fill = "white", color = "black", linewidth = 0.05) +
+  geom_sf(data = map, fill = "grey60", colour = "grey60") +
     geom_sf(data = without_estimation800, fill = "gray10", color = "gray10", linewidth = 0.05) +
     geom_sf(data = completeness800, aes(fill = Quality), linewidth = 0.05, color = NA) +
     scale_fill_manual(values = colors, name = "", guide = "none") +
@@ -358,13 +366,13 @@ completenes_800km <- ggplot() +
     axis.ticks = element_blank(),
     panel.grid = element_blank()) +
     coord_sf(expand = FALSE)
-completenes_800km       
+completenes_800km      
+
 #####################################################################
 ### Combine all completeness maps ----
 #####################################################################
 library(patchwork)
 combined_maps <- (completenes_100km | completenes_200km) /
   (completenes_400km | completenes_800km)
-
 combined_maps
 ggsave("results/Figures/completeness.png", plot = combined_maps, width = 10, height = 8,units = "in",dpi = 400)

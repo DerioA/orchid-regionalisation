@@ -2,13 +2,13 @@
 # 2.- Data wrangling
 # ==============================================================================
 ## 2.1.- Data collection: 
-# We used georeferenced occurrences derived from herbarium data from the:
+# We used georeferenced occurrences derived from herbarium data:
 # - Global Biodiversity Information Facility (GBIF.ORG, 2024),
 # - speciesLink (speciesLink network, 2025),
 # - RAINBIO (Dauby et al., 2016), and
 # - Atlas of Living Australia (ALA, 2025).
 # ==============================================================================
-# PACKAGES
+## Load packages
 library(data.table)
 library(tidyr)
 library(dplyr)
@@ -123,3 +123,6 @@ orchid_ala <- orchid_ala[taxonRank %in% c("species", "subspecies", "variety")] #
 # Keep only preserved specimens
 table(orchid_ala$basisOfRecord)
 orchid_ala <- orchid_ala[basisOfRecord %in% c("PRESERVED_SPECIMEN")] # 155,175 records
+
+# Note: the final databases from this step are the ones that will be used
+# in the next step "2.2. Data selection".

@@ -1,5 +1,10 @@
+# ==============================================================================
+# 2.- Data wrangling
+# ==============================================================================
+# ==============================================================================
 ## **2.2.- Data selection**
-
+# ==============================================================================
+# ==============================================================================
 ### *Geographic inaccuracies:*
 # We identified and discarded occurrence records meeting one or more of the following criteria:
 # - Equal latitude and longitude
@@ -8,34 +13,34 @@
 # - Coordinates within 10-km radius of capital cities
 # - Coordinates within 2-km radius of biodiversity institutions
 # - Marine coordinates (using CoordinateCleaner package; Zizka et al., 2019)
-
+# ==============================================================================
 ### *Taxonomic standard:*
 #After identifying and discarding occurrence records with spatial errors,
 #we updated the taxonomy and revised the native distribution of the species.
+#==============================================================================
 ################################################################################
-## Load required packages
-library(CoordinateCleaner)
-library(sp)
-library(ggplot2)
-library(dplyr)
-library(stringr)
-library(tidyr)
-library(data.table)
-library(rWCVP)
-library(rWCVPdata)
-library(purrr)
-library(furrr)
-library(sf)
-library(readr)
 
+## Load packages
+library(CoordinateCleaner) #Automated Cleaning of Occurrence Records from Biological Collections
 options("sp_evolution_status" = 2)
+library(sp) #Spatial Data
+library(ggplot2) #Data Visualisations 
+library(dplyr) #Data Manipulation
+library(stringr) #Wrappers for common string operations
+library(tidyr) #Data Manipulation
+library(data.table) #Fast aggregation of large data
+library(rWCVP) #It includes functions to generate maps and species lists, as well as match names to the WCVP
+library(rWCVPdata)
+library(purrr) #Functional Programming Tools
+library(furrr) #Apply Mapping Functions in Parallel using Futures
+library(sf) #Simple Features for R
+library(readr) #Read Rectangular Text Data
 
 ################################################################################
 # We analyse each dataset separately and then join them together remove spatial errors
-
 ## Process GBIF database
 flags_gbif <- clean_coordinates(
-  x = orchid_gbif,
+  x = orchid_gbif,#This database comes from "2.1.- Data collection"
   lon = "decimalLongitude",
   lat = "decimalLatitude",
   countries = "countryCode",
@@ -65,7 +70,7 @@ ggplot() +
 # Remove spatial error - rainbio database
 names(orchid_rainbio)
 flags_rainbio <- clean_coordinates(
-  x = orchid_rainbio,
+  x = orchid_rainbio,#This database comes from "2.1.- Data collection"
   lon = "decimalLongitude",
   lat = "decimalLatitude",
   countries = "countryCode",
@@ -93,7 +98,7 @@ ggplot() +
 ## Process SpeciesLink database
 # Remove spatial error - specieslinks database
 # Create a column with the specific epithet
-orchid_links <- orchid_links %>%
+orchid_links <- orchid_links %>% #This database comes from "2.1.- Data collection"
   mutate(
     scientificName.new = str_glue("{genus} {species}") %>%  # Combine with format
       as.character(),                                     # Convert to text
@@ -114,7 +119,7 @@ inv <- c(10526, 10535, 10553, 10555, 10565, 10569, 10577, 10588,
          149587, 149593, 149599, 152584, 152585, 152592, 152609, 
          152627, 152630)
 orchid_links <- orchid_links[-inv,] # 237,437 records
-# re-run lines 92-99
+# re-run lines 107-112
 
 summary(flags_links)
 plot(flags_links, lon = "longitude", lat = "latitude")
@@ -138,7 +143,7 @@ ggplot() +
 # Remove spatial error - ALA database
 names(orchid_ala)
 flags_ala <- clean_coordinates(
-  x = orchid_ala,
+  x = orchid_ala,#This database comes from "2.1.- Data collection"
   lon = "decimalLongitude",
   lat = "decimalLatitude",
   countries = "countryCode",
@@ -373,13 +378,11 @@ process_genus <- function(genus_name, data) {
     filter(wcvp_genus == genus_name) %>% 
     st_as_sf(coords = c("decimalLongitude", "decimalLatitude"),
              crs = st_crs(4326), remove = FALSE)
-  
   # Skip if no records found for this genus
   if(nrow(genus_data) == 0) {
     message(sprintf("No records found for genus %s", genus_name))
     return(NULL)
   }
-  
   # Attempt to get native range from WCVP with error handling
   genus_range <- tryCatch({
     wcvp_distribution(genus_name, taxon_rank = "genus",
@@ -389,26 +392,21 @@ process_genus <- function(genus_name, data) {
     message(sprintf("Error processing genus %s: %s", genus_name, e$message))
     return(NULL)
   })
-  
   # Discard completely if genus not in WCVP or error occurred
   if(is.null(genus_range) || nrow(genus_range) == 0) {
     message(sprintf("Genus %s not found in WCVP - discarding %d records", 
                     genus_name, nrow(genus_data)))
     return(NULL)
   }
-  
   # Create 1km buffer around native range (approx. 0.009 degrees)
   buffered_dist <- genus_range %>%
     st_union() %>%
     st_buffer(0.009)
-  
   # Identify records within native range (with buffer)
   genus_data$native_buffer <- st_intersects(genus_data, buffered_dist, sparse = FALSE)[,1]
-  
   # Filter to keep only native occurrences
   filtered_data <- genus_data %>% 
     filter(native_buffer)
-  
   # Only save if we have valid records
   if(nrow(filtered_data) > 0) {
     output_file <- file.path(output_dir, paste0(genus_name, ".csv"))
@@ -417,8 +415,7 @@ process_genus <- function(genus_name, data) {
   } else {
     message(sprintf("Genus %s: no records within native range", genus_name))
     return(NULL)
-  }
-}
+  }}
 
 # Get unique genus list (excluding NA values)
 unique_genera <- unique(orchids$wcvp_genus)
@@ -430,11 +427,9 @@ results <- future_map(
   unique_genera,
   ~{
     message(sprintf("Processing genus: %s", .x))
-    safely(process_genus)(.x, orchids)
-  },
+    safely(process_genus)(.x, orchids) },
   .progress = TRUE,
-  .options = furrr_options(seed = TRUE)
-)
+  .options = furrr_options(seed = TRUE))
 
 # Generate comprehensive processing report
 processed_log <- tibble(
@@ -457,9 +452,7 @@ processed_log <- tibble(
   status = case_when(
     !success ~ "Error in processing",
     filtered_records == 0 ~ "No valid records",
-    TRUE ~ "Success"
-  )
-)
+    TRUE ~ "Success"))
 
 # Save detailed log
 write_csv(processed_log, file.path(output_dir, "processing_summary.csv"))
@@ -505,8 +498,10 @@ orchids_native <- rbindlist(
   }),
   fill = TRUE) # In case there is any minimal difference between files
 
+################################################################################
 # Manually check some of the genera to ensure correct processing
-# First Aa genus
+################## Aa genus ##################
+##############################################
 Aa_genus <- orchids_native[orchids_native$wcvp_genus == "Aa", ]
 # genus, lat, long
 occs_Aa <- 
@@ -561,4 +556,4 @@ write_csv(orchids_native, file = "processed-data/dataselection_taxonomic-standar
 # We will use the column 'wcvp_name' in our final database for analysis.
 # Then, we transformed this occurrence into incidence-based data matrix
 # where rows represent grid cells and columns represent species using
-# three grain sizes (100 × 100, 200 × 200 and 400 × 400 km2).
+# four grain sizes (100 × 100, 200 × 200 and 400 × 400 km, and 800 x 800 km).

@@ -12,6 +12,9 @@ library(paletteer)   # For colour palettes
 library(ggplot2)     # For additional plotting
 library(ggpubr)      # For publication-ready graphics
 library(indicspecies)# For indicator species
+library(tidyr)
+library(Matrix)
+library(tibble)
 
 # ==============================================================================
 # 1. Load spatial and community data for 200km hexagonal grid
@@ -21,20 +24,25 @@ library(indicspecies)# For indicator species
 # 5. Use spectral colour scheme matching regional biogeographical affinities
 # ==============================================================================
 # 1. Load data
-shape200 <- st_read("processed-data/community_matrix/pam_shape/shape_reduce200.shp")
-load("processed-data/community_matrix/pam/pam200_reduce.RData")
+shape200 <- st_read("processed-data/community_matrix/pam_shape/grid_200km.gpkg")
+comm200 <- readRDS("processed-data/community_matrix/pam/pam_200km.rds")
 load("processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_200.RData")
 rm(beta_sne_mean200, beta_sor_mean200)
 
 # 2. Define cluster names
-regions <- c("Chile-Patagonian","Australian","Neotropical", 
-             "Afrotropical","Indo-Malaysian","Holartic")
+regions <- c("Holarctic","Indo-Malaysian","Australian",
+             "Chile-Patagonian","Neotropical","Afrotropical")
+
 
 # 3. Cluster analysis
 hc200 <- stats::hclust(beta_sim_mean200, method = "average")
 clusters200 <- cutree(hc200, k = 6)
+# Assigning region names to groups
 shape200$cluster <- factor(clusters200, labels = regions)
+# Verify that comm200 has cells in the same order.
 comm200 <- as.matrix(comm200)
+# Ensure correspondence between cells and groups
+group_vector <- shape200$cluster[match(rownames(comm200), shape200$idcell)]
 
 # 4. Calculate unique and shared species
 species_by_region <- lapply(unique(clusters200), function(cluster) {
@@ -62,23 +70,23 @@ for (i in 1:6) {
 
 # 5. Visualisation settings
 region_colours <- c(
-  "Chile-Patagonian" = "#ED820AFF",
+  "Holarctic"="#ED820AFF",
+  "Indo-Malaysian" = "#FCDE85FF",
   "Australian" = "#A71B4BFF",
-  "Neotropical" = "#FCDE85FF",          
-  "Afrotropical" = "#BAEEAEFF",   
-  "Indo-Malaysian" = "#584B9FFF",   
-  "Holarctic" = "#00B1B5FF")  # Corrected spelling
+  "Chile-Patagonian"="#BAEEAEFF",  
+  "Neotropical"="#00B1B5FF",
+  "Afrotropical"="#584B9FFF")  # Corrected spelling
 
 # Generate chord diagram
-png("results/figures/shared_sp.png", width = 2500, height = 2500, res = 400)
+png("orchid-regionalisation/results/figures/shared_sp.png", width = 2500, height = 2500, res = 400)
 par(family = "sans")
 
 circos.par(
   gap.after = c(rep(4, 5), 7),
   start.degree = 5,
   track.margin = c(0, 0))  # Remove label space
-colors200<-c("#ED820AFF","#A71B4BFF","#FCDE85FF","#BAEEAEFF",
-             "#584B9FFF","#00B1B5FF" )
+colors200<-c("#ED820AFF","#FCDE85FF","#A71B4BFF",
+             "#BAEEAEFF","#00B1B5FF","#584B9FFF")
 chordDiagram(shared_matrix,
              grid.col = colors200,
              transparency = 0,
@@ -101,9 +109,8 @@ while (!is.null(dev.list())) {
 #Bioregion Statistics
 # ==============================================================================
 # 1. Calculate species statistics ----
-# Total species per region (from your original community matrix)
+# Total species per region
 total_species_counts <- sapply(species_by_region, length)
-
 # Unique species counts (from your previous calculation)
 unique_species_counts <- sapply(unique_species, length)
 
@@ -111,23 +118,22 @@ region_stats <- data.frame(
   Region = regions,
   Total_Species = total_species_counts,
   Unique_Species = unique_species_counts,
-  stringsAsFactors = FALSE
-)
+  stringsAsFactors = FALSE)
 
-# 2. Calculate spatial statistics ----
-# (This part remains correct as is)
+# 2. Calculate spatial statistics
+# 1. Cell counting
 cell_counts <- shape200 %>%
   st_drop_geometry() %>%
   count(cluster) %>%
   rename(Region = cluster, Hexagonal_Cells = n)
 
+# 2. Calculating areas
 region_areas <- shape200 %>%
-  group_by(cluster) %>%  # Group by bioregion
-  summarise(
-    Area_km2 = sum(as.numeric(st_area(geometry)))/1e6  # Calculate area in km²
-    ) %>% 
-      st_drop_geometry() %>%  # Remove geometry column
-      rename(Region = cluster)  # Rename cluster to Region
+  mutate(area_celda = as.numeric(sf::st_area(.)) / 1e6) %>% 
+  group_by(cluster) %>%  
+  summarise(Area_km2 = sum(area_celda)) %>% 
+  st_drop_geometry() %>%  
+  rename(Region = cluster)
             
 # 3. Aggregate PD values ----
 load("processed-data/community_matrix/phylogenetic_metrics/PD_site_means_200.RData")
@@ -202,49 +208,128 @@ colnames(final_table) <- c(
               "Mean PD",
               "± SD")
 write.csv(final_table,"results/table/bioregion_stats.csv", row.names = FALSE)
+
 #############################################################################
 #############################################################################
 #Analysis of indicator species
 #############################################################################
-# Make sure the sites are in the same order.
-group_vector <- shape200$cluster[match(rownames(comm200), shape200$idcell)]
-# Run indicator species analysis
-indval_result <- multipatt(comm200, cluster = group_vector, func = "r.g", control = how(nperm = 999))
-# Convertir a data.frame y agregar nombre de especie
-indval_table <- as.data.frame(indval_result$sign)
-indval_table$Species <- rownames(indval_table)
-# Identificar columnas que son grupos
-group_cols <- grep("^s\\.", names(indval_table))
+# 1. Preparación de datos -------------------------------------------------
+# Usar tus grupos existentes (k=6)
+rownames(comm200) <- shape200$idcell  # Ensure matrix and spatial data match
+hc200 <- stats::hclust(beta_sim_mean200, method = "average")
+clusters200 <- cutree(hc200, k = 6)
 
-# Filtrar y obtener top 5 especies indicadoras por grupo (con p-value)
-top_species_per_region <- indval_table %>%
-  filter(p.value <= 0.05) %>%
-  mutate(Group = apply(.[, group_cols], 1, function(x) {
-    groups <- which(x == 1)
-    if (length(groups) == 1) return(groups) else return(NA)
-  })) %>%
-  filter(!is.na(Group)) %>%
+# 2. Pre-filtering of species:
+# Why consider pre-filtering?
+# Species with too few occurrences may generate spurious associations.
+# - Statistical analysis requires sufficient power (usually n ≥ 5)
+# - Reference literature:
+# - Dufrêne & Legendre (1997): Recommend excluding rare species
+# - De Cáceres et al. (2010): Suggest minimum thresholds for occurrence
+# Pre-filtered for dgCMatrix
+class(comm200)
+dim(comm200)
+occurrences <- Matrix::colSums(comm200 != 0)
+# Conteo de ocurrencias
+species_to_keep <- names(which(occurrences >= 5))
+comm200_filtrado <- comm200[, species_to_keep]
+# 3. Análisis de especies indicadoras
+set.seed(123)  # Para reproducibilidad
+# Versión robusta de IndVal
+indval_result <- multipatt(
+  x = as.matrix(comm200_filtrado),  # Convert the dense matrix
+  cluster = clusters200,
+  func = "IndVal.g",  # IIndVal for unequal groups
+  duleg = TRUE,       # Consider only species with maximum in one group only
+  control = how(nperm = 999))
+
+# 3. Process ALL identified species
+all_species_df <- indval_result$sign %>%
+  as.data.frame() %>%
+  rownames_to_column("Species") %>%
+  mutate(
+    Group = colnames(indval_result$comb)[index],
+    # Calculate the difference between the maximum IndVal value and the second maximum
+    IndVal_diff = apply(indval_result$str, 1, function(x) {
+      sorted <- sort(x, decreasing = TRUE)
+      if(length(sorted) > 1) sorted[1] - sorted[2] else NA
+    })) %>%
+  select(Species, Group, Stat = stat, P_value = p.value, IndVal_diff)
+
+# 4. Calculate group distribution ----------------------------
+# Attendance/absence matrix by group
+group_presence <- t(apply(as.matrix(comm200_filtrado), 2, function(x) {
+  tapply(x > 0, clusters200, sum)
+}))
+
+# Convert to percentage
+group_percentage <- t(apply(group_presence, 1, function(x) {
+  round(x / sum(x) * 100, 1)
+}))
+
+# Rename columns
+colnames(group_percentage) <- paste0("Perc_Group_", colnames(group_percentage))
+colnames(group_presence) <- paste0("Count_Group_", colnames(group_presence))
+
+# 5. Combining all information
+REVIEW:
+  # - Consistency between assigned Group and highest Perc_Group_X
+  # - Species with Max_Percentage >80% as best candidates
+  # - Species with Max_Percentage <50% as potential false positives
+  left_join(
+    as.data.frame(group_presence) %>% 
+      tibble::rownames_to_column("Species"),
+    by = "Species") %>%
+  left_join(
+    as.data.frame(group_percentage) %>% 
+      tibble::rownames_to_column("Species"),
+    by = "Species") %>%
+  mutate(
+    Total_Occurrences = rowSums(group_presence[all_species_df$Species, ]),
+    Max_Percentage = apply(group_percentage[all_species_df$Species, ], 1, max)) %>%
+  arrange(Group, -Stat)
+write.csv(full_results, "results/table/all_indicator_species_full.csv", row.names = FALSE)
+
+# subsets
+# Define thresholds
+p_threshold <- 0.05
+stat_threshold <- 0.3
+concentration_threshold <- 80
+indval_diff_threshold <- 0.1
+
+# Selecting the best indicator species
+best_indicators <- full_results %>%
+  filter(
+    P_value < p_threshold,
+    Stat > stat_threshold,
+    Max_Percentage > concentration_threshold,
+    IndVal_diff > indval_diff_threshold) %>%
+  arrange(Group, -Stat) %>%
+  select(Species, Group, Stat, P_value, Max_Percentage, IndVal_diff)
+
+# Exporting results
+write.csv(best_indicators, "results/table/best_indicator_species.csv", row.names = FALSE)
+
+# Optional: Top 5 per group
+top5_per_group <- best_indicators %>%
   group_by(Group) %>%
-  slice_max(order_by = stat, n = 5, with_ties = FALSE) %>%
-  mutate(Species_Info = paste0(
-    Species,
-    " (stat=", signif(stat, 3),
-    ", p=", signif(p.value, 3), ")"
-    )) %>%
-  summarise(Indicator_Species = paste(Species_Info, collapse = ", "))
-# Asignar nombres a los grupos
-region_names <- c(
-  "Chile-Patagonian","Australian","Neotropical", 
-  "Afrotropical","Indo-Malaysian","Holartic")
+  slice_max(order_by = Stat, n = 5) %>%
+  ungroup()
 
-# Agregar nombre de la región
-top_species_per_region$Region <- region_names[as.numeric(top_species_per_region$Group)]
+write.csv(top5_per_group, "results/table/top5_indicators_per_group.csv", row.names = FALSE)# 7. Crear resumen por grupo -------------------------------------
+# REVIEW:
+# - Groups with mean_Percentage <60% contain poorly constrained species
+# - Groups with n_species <10 may be biogeographically insignificant
+group_summary <- full_results %>%
+  group_by(Group) %>%
+  summarise(
+    n_species = n(),
+    mean_Stat = mean(Stat, na.rm = TRUE),
+    mean_Percentage = mean(Max_Percentage, na.rm = TRUE),
+    .groups = "drop")
+write.csv(group_summary, "results/table/indicator_species_group_summary.csv", row.names = FALSE)
 
-# Reordenar columnas
-top_species_per_region <- top_species_per_region %>%
-  select(Region, Top_Indicator_Species)
-write.csv(top_species_per_region,"results/table/bio_species.csv", row.names = FALSE)
-###################################################################
+##################################################################
 # Cell Affiliation Analysis Across Bioregions
 ##################################################################
 rm(list = ls())  # Clear workspace
@@ -255,10 +340,13 @@ library(circlize)      # Circular visualisations
 library(paletteer)     # Colour palettes
 library(ggplot2)       # Data visualisation
 library(ggpubr)        # Publication-ready graphics
+require(devtools)
 library(Herodotools)   # Biogeographical analyses
 library(rnaturalearth) # Base map data
 library(ggthemes)      # Map themes
 library(scales)        # Colour scaling
+library(dendextend)
+library(tibble)
 
 # ==============================================================================
 # Methodology Summary:
@@ -270,8 +358,8 @@ library(scales)        # Colour scaling
 # ==============================================================================
 
 # 1. Load data ----------------------------------------------------------------
-shape200 <- st_read("processed-data/community_matrix/pam_shape/shape_reduce200.shp")
-load("processed-data/community_matrix/pam/pam200_reduce.RData")
+shape200 <- st_read("processed-data/community_matrix/pam_shape/grid_200km.gpkg")
+comm200 <- readRDS("processed-data/community_matrix/pam/pam_200km.rds")
 load("processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_200.RData")
 rm(beta_sne_mean200, beta_sor_mean200)
 
@@ -294,8 +382,7 @@ shape200_affiliation <- shape200 %>%
 continents <- ne_countries(
   continent = c("Africa", "Asia", "North America", "Europe", "Oceania", "South America"),
   returnclass = "sf",
-  scale = "medium"
-)
+  scale = "medium")
 
 # Set Behrmann projection
 behrmann <- "+proj=cea +lon_0=0 +lat_ts=30 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
@@ -303,27 +390,32 @@ map <- st_transform(continents, behrmann)
 shape200_affiliation <- st_transform(shape200_affiliation, behrmann)
 
 # 5. Define colour scheme -----------------------------------------------------
-group_colours <- as.character(paletteer_c("grDevices::Spectral", 6))
+# to make sure that the colours are assigned to exactly the right group,
+#we generate the same dendrogram as in step 5.
+hc200 <- stats::hclust(beta_sim_mean200, method = "average")
+clusters200 <- cutree(hc200, k = 6)
+colors200 <- as.character(paletteer_c("grDevices::Spectral", 6))
 
-# 6. Create gradient colour function ------------------------------------------
-get_gradient_colour <- function(aff, group, colours) {
-  if (is.na(aff) || is.na(group)) return(NA)
-  
-  group_num <- as.numeric(group)
-  if (group_num < 1 || group_num > length(colours)) return(NA)
-  
-  base_rgb <- col2rgb(colours[group_num]) / 255
-  final_rgb <- aff * base_rgb + (1 - aff) * 1  # Blend with white
-  rgb(final_rgb[1], final_rgb[2], final_rgb[3], alpha = aff)
-}
+# Colouring dendrogram
+dend200 <- as.dendrogram(hc200)
+dend200 <- color_branches(dend200, k = 6, col = colors200)
 
-# 7. Assign gradient colours to cells -----------------------------------------
-shape200_affiliation$fill_colour <- mapply(
-  get_gradient_colour,
-  aff = shape200_affiliation$afilliation,
-  group = shape200_affiliation$group,
-  MoreArgs = list(colours = group_colours)
-)
+# Extract order, labels and true colours
+dend_order <- order.dendrogram(dend200)
+leaves <- labels(dend200)
+leaf_colors <- get_leaves_branches_col(dend200)
+
+# Create table with idcell, group and colour assigned according to dendrogram
+group_df <- tibble(
+  idcell = leaves,
+  group = clusters200[leaves],
+  color = leaf_colors
+) %>% distinct(group, .keep_all = TRUE)
+
+# Asignar colores a shape200_affiliation por left_join
+shape200_affiliation <- shape200_affiliation %>%
+  mutate(group = clusters200[as.character(idcell)]) %>%
+  left_join(group_df %>% select(group, color), by = "group")
 
 # 8. Identify low-affiliation cells -------------------------------------------
 q1 <- quantile(shape200_affiliation$afilliation, probs = 0.25, na.rm = TRUE)
@@ -332,50 +424,20 @@ shape200_affiliation$low_affiliation <- shape200_affiliation$afilliation <= q1
 # 9. Create and save affiliation map ------------------------------------------
 affiliation_map <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60", linewidth = 0.2) +
-  #geom_sf(data = shape200_affiliation, aes(fill = fill_colour), colour = NA, size = 0.1) +
+  geom_sf(data = shape200_affiliation, aes(fill = color), colour = NA, size = 0.1) +
+  geom_sf(data = filter(shape200_affiliation, low_affiliation), fill = "black", colour = NA, size = 0.1) +
   scale_fill_identity() +
-  geom_sf(
-    data = filter(shape200_affiliation, low_affiliation),
-    fill = NA, colour = "black", size = 0.01
-  ) +
-  theme_bw()+
-  theme(
-    panel.background = element_rect(fill = "white",colour = NA),
-    plot.background = element_rect(fill = "white",colour = NA),
-    text = element_text(size = 20, family = "sans"),
-    plot.margin = unit(c(1, 1, 1, 1), "cm")
-  )
-affiliation_map
-
-affiliation_map <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60", linewidth = 0.2) +
-  geom_sf(
-    data = shape200_affiliation,
-    fill = "black",
-    colour = NA,
-    size = 0.01) +
-  geom_sf(
-    data = shape200_affiliation,
-    aes(fill = fill_colour,
-        alpha = ifelse(low_affiliation, 0.1, 1)),  # Transparencia condicional
-    colour = NA,
-    size = 0.1) +
-  scale_fill_identity() +
-  scale_alpha_identity() +  # Añade escala para alpha
-  theme_bw() +
+  theme_map() +
   theme(
     legend.position = "none",
     text = element_text(size = 16),
-    axis.title.x = element_blank(),        
-    axis.text.x = element_blank(),     
-    axis.ticks.x = element_blank(),    
-    axis.line.x = element_blank(),    
-    axis.title.y = element_blank(),    
-    axis.text.y = element_blank(),    
-    axis.ticks.y = element_blank(),    
-    axis.line.y = element_blank()) +
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line = element_blank()) +
   coord_sf(expand = FALSE)
 
 affiliation_map
 
-ggsave("results/figures/affiliation_200km.png",affiliation_map,dpi = 400,width = 10,height = 6)
+ggsave("results/figures/affiliation_200km.png",
+       affiliation_map,dpi = 400,width = 10,height = 6,bg = "white")

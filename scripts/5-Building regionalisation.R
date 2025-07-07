@@ -31,9 +31,9 @@ library(vegan)
 ## Step 2: Load Input Files
 ## Load pre-processed phylogenetic beta diversity and site data
 ## ============================================================
-load(file = "processed-data/community_matrix/pam/pam100_reduce.RData")
+comm100 <- readRDS("processed-data/community_matrix/pam/pam_100km.rds")
 load(file = "processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_100.RData")
-shape100 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce100.shp")
+shape100 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_100km.gpkg")
 rm(beta_sne_mean100, beta_sor_mean100)  # These metrics will not be used
 
 ## ============================================================
@@ -72,13 +72,13 @@ corr
 ## ============================================================
 optimal_result <- optimal_phyloregion(beta_sim_mean100, method = "average", k = 20)
 print(optimal_result$optimal)
-quality_values <- optimal_result$df
+quality_values <- optimal_result$df#ev = 0.46255309
 
 optimal <- ggplot(quality_values, aes(x = k, y = ev)) +
   geom_line(color = "grey30", size = 1) +
   geom_point(color = "grey30", size = 3) +
   geom_vline(xintercept = 5, linetype = "dashed", colour = "black") +
-  geom_point(aes(x = 5, y = 0.45991726), colour = "red", size = 5) +
+  geom_point(aes(x = 5, y = 0.46255309), colour = "red", size = 5) +
   labs(x = "Number of clusters", y = "Explained variance") +
   theme_bw() +
   theme(
@@ -113,10 +113,10 @@ leaf_colors <- get_leaves_branches_col(dend100)
 
 # Associate correct cell ID, group and colour
 group_df <- tibble(
-  idcell = as.integer(leaves),
+  idcell = leaves,
   group = clusters[leaves],
-  color = leaf_colors) %>% 
-  distinct(group, .keep_all = TRUE)  # One colour per group
+  color = leaf_colors) %>%
+  distinct(group, .keep_all = TRUE)
 
 ## Assign colours to spatial data
 bioregion100 <- shape100 %>% 
@@ -132,7 +132,7 @@ dend_100 <- fviz_dend(dend100, k = 5, show_labels = FALSE, k_colors = colors100,
     axis.title.y = element_text(size = 16, family = "sans"),  # Y-axis title
     axis.text.x = element_text(size = 16, family = "sans"),   # X-axis labels
     axis.title.x = element_text(size = 16, family = "sans")) + # X-axis title
-  ylab("βsim mean") + 
+  ylab("Mean βsim") + 
   xlab("Regions")
 dend_100
 
@@ -144,7 +144,7 @@ map <- ggplot() +
 map
 
 # Save the shape
-st_write(bioregion100, "results/SIG/bioregion100km.shp")
+st_write(bioregion100, "results/SIG/bioregion100km.gpkg")
 
 ## ============================================================
 ## Step 6: Map with Behrmann Projection
@@ -162,7 +162,7 @@ map.regions100 <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion100, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
-  theme_bw() +
+  theme_map() +
   theme(
     legend.position = "none",
     text = element_text(size = 16),
@@ -183,7 +183,7 @@ map.regions100
 ## Step 7: NMDS Ordination of Phylogenetic Beta Diversity
 ## ============================================================
 set.seed(123)
-nmds_100 <- metaMDS(beta_sim_mean100, k = 2, trymax = 50,
+nmds_100 <- metaMDS(beta_sim_mean100, k = 2, trymax = 100,
                     engine = "monoMDS", autotransform = FALSE)
 
 nmds_points100 <- as.data.frame(nmds_100$points)
@@ -192,7 +192,7 @@ colnames(nmds_points100) <- c("NMDS1", "NMDS2")
 # Assignment of groups
 nmds_points100$group <- factor(
   clusters[row.names(nmds_points100)],
-  levels = 1:29)
+  levels = 1:5)
 
 group_color_map <- group_df %>% 
   select(group, dend_color = color) %>%
@@ -219,17 +219,15 @@ nmds100
 a <- map.regions100 / (nmds100 + dend_100 + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
 a
-ggsave("results/Figures/phyloregions100km.png", a, dpi = 400, width = 15, height = 10)
-
 ###################################################################
 ### ============================================================
 ##                             200 KM
 ## ============================================================
 ## Step 2: Load Input Files
 ## ============================================================
-load(file = "processed-data/community_matrix/pam/pam200_reduce.RData")
+comm200 <- readRDS("processed-data/community_matrix/pam/pam_200km.rds")
 load(file = "processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_200.RData")
-shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce200.shp")
+shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_200km.gpkg")
 rm(beta_sne_mean200, beta_sor_mean200)
 
 ## ============================================================
@@ -265,14 +263,14 @@ corr200
 ## Step 4: Determine Optimal Number of Clusters (k)
 ## ============================================================
 optimal_result200 <- optimal_phyloregion(beta_sim_mean200, method = "average", k = 20)
-optimal_result200$optimal
+optimal_result200$optimal#EV=0.51
 quality_values200 <- optimal_result200$df
 
 optimal200 <- ggplot(quality_values200, aes(x = k, y = ev)) +
   geom_line(color = "grey30", size = 1) +
   geom_point(color = "grey30", size = 3) +
   geom_vline(xintercept = 6, linetype = "dashed", colour = "black") +
-  geom_point(aes(x = 6, y = 0.5093724), colour = "red", size = 5) +
+  geom_point(aes(x = 6, y = 0.51), colour = "red", size = 5) +
   labs(x = "Number of clusters", y = "Explained variance") +
   theme_bw() +
   theme(
@@ -307,7 +305,7 @@ leaf_colors200 <- get_leaves_branches_col(dend200)
 
 # Associate correct cell ID, group and colour
 group_df200 <- tibble(
-  idcell = as.integer(leaves200),
+  idcell = leaves200,
   group = clusters200[leaves200],
   color = leaf_colors200) %>% 
   distinct(group, .keep_all = TRUE)  # One colour per group
@@ -315,7 +313,8 @@ group_df200 <- tibble(
 ## Assign colours to spatial data
 bioregion200 <- shape200 %>% 
   mutate(group = clusters200[as.character(idcell)]) %>% 
-  left_join(group_df200 %>% select(group, color), by = "group")
+  left_join(group_df200 %>%
+  select(group, color), by = "group")
 
 # Plot the dendrogram
 dend_200 <- fviz_dend(dend200, k = 6, show_labels = FALSE, k_colors = colors200,
@@ -326,7 +325,7 @@ dend_200 <- fviz_dend(dend200, k = 6, show_labels = FALSE, k_colors = colors200,
     axis.title.y = element_text(size = 16, family = "sans"),  # Y-axis title
     axis.text.x = element_text(size = 16, family = "sans"),   # X-axis labels
     axis.title.x = element_text(size = 16, family = "sans")) + # X-axis title
-  ylab("βsim mean") + 
+  ylab("Mean βsim") + 
   xlab("Regions")
 dend_200
 
@@ -338,7 +337,7 @@ map200 <- ggplot() +
 map200
 
 # Save the shape
-st_write(bioregion200, "results/SIG/bioregion200km.shp")
+st_write(bioregion200, "results/SIG/bioregion200km.gpkg")
 
 ## ============================================================
 ## Step 6: Map with Behrmann Projection
@@ -350,7 +349,7 @@ map.regions200 <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion200, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() + 
-  theme_bw() +
+  theme_map() +
   theme(
     legend.position = "none",
     text = element_text(size = 16),
@@ -366,8 +365,8 @@ map.regions200 <- ggplot() +
 map.regions200
 
 # With names
-groups <- c("Australian", "Chile-Patagonian", "Neotropical", 
-            "Afrotropical", "Holarctic", "Indo-Malaysian")
+groups <- c("Australian","Holarctic","Indo-Malaysian","Chile-Patagonian",
+            "Neotropical","Afrotropical")
 
 map.regions200_names <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
@@ -383,7 +382,7 @@ map.regions200_names <- ggplot() +
       keywidth = unit(1.2, "cm"),
       keyheight = unit(0.5, "cm"),
       direction = "horizontal")) +
-  theme_bw() +
+  theme_map() +
   theme(
     text = element_text(family = "sans", size = 30),
     legend.position = "bottom",
@@ -403,14 +402,12 @@ map.regions200_names <- ggplot() +
     axis.line.y = element_blank()) +
   coord_sf(expand = FALSE)
 map.regions200_names
-ggsave("results/Figures/200km.png", map.regions200, dpi = 400, width = 15, height = 10)
-ggsave("results/Figures/200km_names.png", map.regions200_names, dpi = 400, width = 15, height = 10)
 
 ## ============================================================
 ## Step 7: NMDS Ordination of Phylogenetic Beta Diversity
 ## ============================================================
 set.seed(123)
-nmds_200 <- metaMDS(beta_sim_mean200, k = 2, trymax = 50,
+nmds_200 <- metaMDS(beta_sim_mean200, k = 2, trymax = 100,
                     engine = "monoMDS", autotransform = FALSE)
 
 nmds_points200 <- as.data.frame(nmds_200$points)
@@ -443,18 +440,24 @@ nmds200
 ## ============================================================
 ## Step 8: Combine Outputs into Single Figure
 ## ============================================================
+
 b1 <- map.regions200_names / (nmds200 + dend_200 + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
 b1
 ggsave("results/Figures/phyloregions200km_all_names.png", b1, dpi = 400, width = 15, height = 12)
 
+b <- map.regions200 / (nmds200 + dend_200 + plot_layout(widths = c(1, 1))) +
+  plot_layout(heights = c(5, 3))
+b
+ggsave("results/Figures/phyloregions200km_all.png", b, dpi = 400, width = 15, height = 12)
+
 ###################################################################
 ### ============================================================
 ##                             400 KM
 ## ============================================================
-load(file = "processed-data/community_matrix/pam/pam400_reduce.RData")
+comm400 <- readRDS("processed-data/community_matrix/pam/pam_400km.rds")
 load(file = "processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_400.RData")
-shape400 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce400.shp")
+shape400 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_400km.gpkg")
 rm(beta_sne_mean400, beta_sor_mean400)
 
 ## ============================================================
@@ -496,8 +499,8 @@ quality_values400 <- optimal_result400$df
 optimal400 <- ggplot(quality_values400, aes(x = k, y = ev)) +
   geom_line(color = "grey30", size = 1) +
   geom_point(color = "grey30", size = 3) +
-  geom_vline(xintercept = 14, linetype = "dashed", colour = "black") +
-  geom_point(aes(x = 14, y = 0.67217451), colour = "red", size = 5) +
+  geom_vline(xintercept = 20, linetype = "dashed", colour = "black") +
+  geom_point(aes(x = 20, y = 0.6757274), colour = "red", size = 5) +
   labs(x = "Number of clusters", y = "Explained variance") +
   theme_bw() +
   theme(
@@ -516,19 +519,19 @@ g <- grid.arrange(corr400, optimal400, ncol = 2)
 ## ============================================================
 rownames(comm400) <- shape400$idcell  # Ensure matrix and spatial data match
 hc400 <- stats::hclust(beta_sim_mean400, method = "average")
-clusters400 <- cutree(hc400, k = 14)
+clusters400 <- cutree(hc400, k = 20)
 # Colour palette
-colors400 <- as.character(paletteer_c("grDevices::Spectral", 14))
+colors400 <- as.character(paletteer_c("grDevices::Spectral", 20))
 # Constructing dendrograms and extracting colours
 dend400 <- as.dendrogram(hc400)
-dend400 <- color_branches(dend400, k = 14, col = colors400)
+dend400 <- color_branches(dend400, k = 20, col = colors400)
 # Get leaf order and true colours from the dendrogram
 dend_order400 <- order.dendrogram(dend400)
 leaves400 <- labels(dend400)
 leaf_colors400 <- get_leaves_branches_col(dend400)
 # Associate correct cell ID, group and colour
 group_df400 <- tibble(
-  idcell = as.integer(leaves400),
+  idcell = leaves400,
   group = clusters400[leaves400],
   color = leaf_colors400) %>% 
   distinct(group, .keep_all = TRUE)  # One colour per group
@@ -537,15 +540,14 @@ bioregion400 <- shape400 %>%
   mutate(group = clusters400[as.character(idcell)]) %>% 
   left_join(group_df400 %>% select(group, color), by = "group")
 # Plot the dendrogram
-dend_400 <- fviz_dend(dend400, k = 14, show_labels = FALSE, k_colors = colors400,
-                      rect = FALSE, horiz = FALSE, main = "") + 
-  theme_bw() +
+dend_400 <- fviz_dend(dend400, k = 20, show_labels = FALSE, k_colors = colors400,
+                      rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
     axis.text.y = element_text(size = 16, family = "sans"),   # Y-axis labels
     axis.title.y = element_text(size = 16, family = "sans"),  # Y-axis title
     axis.text.x = element_text(size = 16, family = "sans"),   # X-axis labels
     axis.title.x = element_text(size = 16, family = "sans")) + # X-axis title
-  ylab("βsim mean") + 
+  ylab("Mean βsim") + 
   xlab("Regions")
 dend_400
 
@@ -557,7 +559,7 @@ map400 <- ggplot() +
 map400
 
 # Save the shape
-st_write(bioregion400, "results/SIG/bioregion400km.shp")
+st_write(bioregion400, "results/SIG/bioregion400km.gpkg")
 
 ## ============================================================
 ## Step 6: Map with Behrmann Projection
@@ -568,7 +570,7 @@ map.regions400 <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion400, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
-  theme_bw() +
+  theme_map() +
   theme(
     legend.position = "none",
     text = element_text(size = 16),
@@ -587,7 +589,7 @@ map.regions400
 ## Step 7: NMDS Ordination of Phylogenetic Beta Diversity
 ## ============================================================
 set.seed(123)
-nmds_400 <- metaMDS(beta_sim_mean400, k = 2, trymax = 50,
+nmds_400 <- metaMDS(beta_sim_mean400, k = 2, trymax = 100,
                     engine = "monoMDS", autotransform = FALSE)
 
 nmds_points400 <- as.data.frame(nmds_400$points)
@@ -596,7 +598,7 @@ colnames(nmds_points400) <- c("NMDS1", "NMDS2")
 # Assignment of groups
 nmds_points400$group <- factor(
   clusters400[row.names(nmds_points400)],
-  levels = 1:14)
+  levels = 1:20)
 
 group_color_map400 <- group_df400 %>% 
   select(group, dend_color = color) %>%
@@ -623,15 +625,14 @@ nmds400
 c <- map.regions400 / (nmds400 + dend_400 + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
 c
-ggsave("results/Figures/phyloregions400km.png", c, dpi = 400, width = 15, height = 10)
 
 ###################################################################
 ### ============================================================
 ##                              800 KM
 ## ============================================================
-load(file = "processed-data/community_matrix/pam/pam800_reduce.RData")
+comm800 <- readRDS("processed-data/community_matrix/pam/pam_800km.rds")
 load(file = "processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_800.RData")
-shape800 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce800.shp")
+shape800 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_800km.gpkg")
 rm(beta_sne_mean800, beta_sor_mean800)
 
 ## ============================================================
@@ -673,8 +674,8 @@ quality_values800 <- optimal_result800$df
 optimal800 <- ggplot(quality_values800, aes(x = k, y = ev)) +
   geom_line(color = "grey30", size = 1) +
   geom_point(color = "grey30", size = 3) +
-  geom_vline(xintercept = 18, linetype = "dashed", colour = "black") +
-  geom_point(aes(x = 18, y = 0.7520325), colour = "red", size = 5) +
+  geom_vline(xintercept = 16, linetype = "dashed", colour = "black") +
+  geom_point(aes(x = 16, y = 0.74903708), colour = "red", size = 5) +
   labs(x = "Number of clusters", y = "Explained variance") +
   theme_bw() +
   theme(
@@ -693,14 +694,14 @@ h <- grid.arrange(corr800, optimal800, ncol = 2)
 ## ============================================================
 rownames(comm800) <- shape800$idcell  # Ensure matrix and spatial data match
 hc800 <- stats::hclust(beta_sim_mean800, method = "average")
-clusters800 <- cutree(hc800, k = 18)
+clusters800 <- cutree(hc800, k = 16)
 
 # Colour palette
-colors800 <- as.character(paletteer_c("grDevices::Spectral", 18))
+colors800 <- as.character(paletteer_c("grDevices::Spectral", 16))
 
 # Constructing dendrograms and extracting colours
 dend800 <- as.dendrogram(hc800)
-dend800 <- color_branches(dend800, k = 18, col = colors800)
+dend800 <- color_branches(dend800, k = 16, col = colors800)
 
 # Get leaf order and true colours from the dendrogram
 dend_order800 <- order.dendrogram(dend800)
@@ -709,7 +710,7 @@ leaf_colors800 <- get_leaves_branches_col(dend800)
 
 # Associate correct cell ID, group and colour
 group_df800 <- tibble(
-  idcell = as.integer(leaves800),
+  idcell = leaves800,
   group = clusters800[leaves800],
   color = leaf_colors800) %>% 
   distinct(group, .keep_all = TRUE)  # One colour per group
@@ -720,15 +721,14 @@ bioregion800 <- shape800 %>%
   left_join(group_df800 %>% select(group, color), by = "group")
 
 # Plot the dendrogram
-dend_800 <- fviz_dend(dend800, k = 18, show_labels = FALSE, k_colors = colors800,
-                      rect = FALSE, horiz = FALSE, main = "") + 
-  theme_bw() +
+dend_800 <- fviz_dend(dend800, k = 16, show_labels = FALSE, k_colors = colors800,
+                      rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
     axis.text.y = element_text(size = 16, family = "sans"),   # Y-axis labels
     axis.title.y = element_text(size = 16, family = "sans"),  # Y-axis title
     axis.text.x = element_text(size = 16, family = "sans"),   # X-axis labels
     axis.title.x = element_text(size = 16, family = "sans")) + # X-axis title
-  ylab("βsim mean") + 
+  ylab("Mean βsim") + 
   xlab("Regions")
 dend_800
 
@@ -740,7 +740,7 @@ map800 <- ggplot() +
 map800
 
 # Save the shape
-st_write(bioregion800, "results/SIG/bioregion800km.shp")
+st_write(bioregion800, "results/SIG/bioregion800km.gpkg")
 
 ## ============================================================
 ## Step 6: Map with Behrmann Projection
@@ -751,7 +751,7 @@ map.regions800 <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion800, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
-  theme_bw() +
+  theme_map() +
   theme(
     legend.position = "none",
     text = element_text(size = 16),
@@ -770,7 +770,7 @@ map.regions800
 ## Step 7: NMDS Ordination of Phylogenetic Beta Diversity
 ## ============================================================
 set.seed(123)
-nmds_800 <- metaMDS(beta_sim_mean800, k = 2, trymax = 50,
+nmds_800 <- metaMDS(beta_sim_mean800, k = 2, trymax = 100,
                     engine = "monoMDS", autotransform = FALSE)
 
 nmds_points800 <- as.data.frame(nmds_800$points)
@@ -779,7 +779,7 @@ colnames(nmds_points800) <- c("NMDS1", "NMDS2")
 # Assignment of groups
 nmds_points800$group <- factor(
   clusters800[row.names(nmds_points800)],
-  levels = 1:18)
+  levels = 1:16)
 
 group_color_map800 <- group_df800 %>% 
   select(group, dend_color = color) %>%
@@ -806,7 +806,6 @@ nmds800
 d <- map.regions800 / (nmds800 + dend_800 + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
 d
-ggsave("results/Figures/phyloregions800km.png", d, dpi = 400, width = 15, height = 10)
 
 #################################################################
 ## Join all figures
@@ -870,15 +869,14 @@ sil_100 <- fviz_silhouette(sil100) +
     legend.key.size = unit(0.8, "cm"),
     axis.text.x = element_blank(),
     panel.grid.major.x = element_blank())
-
-print(sil_100)
+sil_100
 # Cluster summary:
-# cluster size ave.sil.width
-#       1  285          0.50
-#       2 1226          0.25
-#       3  634          0.26
-#       4  702          0.19
-#       5 2238          0.38
+#cluster size ave.sil.width
+#1      305          0.48
+#2     1199          0.26
+#3      631          0.26
+#4      664          0.19
+#5 2    204          0.38
 
 ##############
 # 200 km analysis
@@ -912,16 +910,15 @@ sil_200 <- fviz_silhouette(sil200) +
     legend.key.size = unit(0.8, "cm"),
     axis.text.x = element_blank(),
     panel.grid.major.x = element_blank())
-
-print(sil_200)
+sil_200
 # Cluster summary:
 # cluster size ave.sil.width
-#       1   15          0.72
-#       2  116          0.44
-#       3  480          0.27
-#       4  322          0.30
-#       5  332          0.21
-#       6  936          0.41
+#       1   955          0.41
+#       2   335          0.19
+#       3   109          0.53
+#       4   10           0.90
+#       5   473          0.28
+#       6   318          0.30
 
 ##############
 # 400 km analysis
@@ -935,7 +932,7 @@ sil400 <- silhouette(clusters400, beta_sim_mean400)
 summary(sil400)  # Average silhouette per cluster and overall
 
 # Prepare silhouette plot
-sil400[,"cluster"] <- factor(sil400[,"cluster"], levels = 1:14)
+sil400[,"cluster"] <- factor(sil400[,"cluster"], levels = 1:20)
 
 sil_400 <- fviz_silhouette(sil400) +
   aes(fill = cluster, color = cluster) +
@@ -945,7 +942,7 @@ sil_400 <- fviz_silhouette(sil400) +
     yintercept = mean(sil400[, "sil_width"]),
     linetype = "dashed", color = "red", linewidth = 0.8) +
   labs(
-    title = "c) 400 km (k = 14)",
+    title = "c) 400 km (k = 20)",
     x = "",
     y = "Silhouette width") +
   theme_bw(base_size = 16, base_family = "sans") +
@@ -955,24 +952,29 @@ sil_400 <- fviz_silhouette(sil400) +
     legend.key.size = unit(0.8, "cm"),
     axis.text.x = element_blank(),
     panel.grid.major.x = element_blank())
-
-print(sil_400)
+sil_400
 # Cluster summary:
-# cluster size ave.sil.width
-# 1        1    8          0.95
-# 2        2   35          0.29
-# 3        3  147          0.23
-# 4        4    5          0.86
-# 5        5  101          0.23
-# 6        6   10          0.70
-# 7        7   13          0.50
-# 8        8   17          0.48
-# 9        9   78          0.12
-# 10      10   32          0.15
-# 11      11   13          0.62
-# 12      12   23          0.14
-# 13      13  308          0.22
-# 14      14   47          0.61
+#cluster size ave.sil.width
+#1        1  102          0.22
+#2        2   13          0.47
+#3        3   47          0.44
+#4        4   15          0.48
+#5        5   68         -0.08
+#6        6   35          0.05
+#7        7  145          0.04
+#8        8    1          0.00
+#9        9    4          0.07
+#10      10    1          0.00
+#11      11    1          0.00
+#12      12   14          0.54
+#13      13    1          0.00
+#14      14   23          0.34
+#15      15  309          0.19
+#16      16    1          0.00
+#17      17    1          0.00
+#18      18   57          0.49
+#19      19    7          0.94
+#20      20    5          0.80
 
 ##############
 # 800 km analysis
@@ -980,13 +982,13 @@ class(beta_sim_mean800)  # Verify distance structure
 class(hc800)             # Verify clustering object
 length(clusters800)      # Check observation count
 
-# Calculate silhouette for k = 18 clusters
+# Calculate silhouette for k = 16 clusters
 sil800 <- silhouette(clusters800, beta_sim_mean800)
 # Statistical summary
 summary(sil800)  # Average silhouette per cluster and overall
 
 # Prepare silhouette plot
-sil800[,"cluster"] <- factor(sil800[,"cluster"], levels = 1:18)
+sil800[,"cluster"] <- factor(sil800[,"cluster"], levels = 1:16)
 
 sil_800 <- fviz_silhouette(sil800) +
   aes(fill = cluster, color = cluster) +
@@ -996,7 +998,7 @@ sil_800 <- fviz_silhouette(sil800) +
     yintercept = mean(sil800[, "sil_width"]),
     linetype = "dashed", color = "red", linewidth = 0.8) +
   labs(
-    title = "d) 800 km (k = 18)",
+    title = "d) 800 km (k = 16)",
     x = "",
     y = "Silhouette width") +
   theme_bw(base_size = 16, base_family = "sans") +
@@ -1007,28 +1009,25 @@ sil_800 <- fviz_silhouette(sil800) +
     axis.text.x = element_blank(),
     panel.grid.major.x = element_blank())
 
-print(sil_800)
+sil_800
 # Cluster summary:
-# cluster size ave.sil.width
-#        1    7          0.81
-#        2   17          0.38
-#        3   15          0.29
-#        4    6          0.62
-#        5    4          0.89
-#        6    5          0.66
-#        7   20          0.15
-#        8   28          0.07
-#        9   31          0.34
-#      10    7          0.61
-#      11   16          0.16
-#      12    1          0.00
-#      13   10          0.16
-#      14    5          0.48
-#      15    3          0.53
-#      16   12          0.66
-#      17  121          0.18
-#      18    2          0.83
-
+#cluster size ave.sil.width
+#1        1    5          0.82
+#2        2   16          0.29
+#3        3   38          0.16
+#4        4    3          0.98
+#5        5    5          0.82
+#6        6   37          0.22
+#7        7    6          0.57
+#8        8   21          0.14
+#9        9    6          0.69
+#10      10   12          0.19
+#11      11   11          0.23
+#12      12   14          0.19
+#13      13    5          0.52
+#14      14    1          0.00
+#15      15  120          0.34
+#16      16   16          0.53
 ##############
 # Composite plot
 all_sil <- grid.arrange(sil_100, sil_200, sil_400, sil_800,
@@ -1054,11 +1053,11 @@ grain_comparison <- data.frame(
 
 # Display results
 print(grain_comparison)
-# Tamaño_grano Silueta_promedio
-# 1          100        0.3155699
-# 2          200        0.3379035
-# 3          400        0.2676213
-# 4          800        0.2802043
+#Tamaño_grano Silueta_promedio
+#1          100        0.3180056
+#2          200        0.3398030
+#3          400        0.2022927
+#4          800        0.3166438
 
 #####################################################################
 # VALIDATION ANALYSIS
@@ -1072,7 +1071,7 @@ print(grain_comparison)
 load("processed-data/data_exploration/Completeness/Estimators200.RData")
 
 # Read shapefile and rename column
-shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce200.shp")
+shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_200km.gpkg")
 colnames(estimators)[1] <- "idcell"
 
 # Load phylogenetic beta diversity components
@@ -1106,12 +1105,12 @@ completeness200 <- completeness200 %>%
 table(completeness200$Quality)
 
 # ============================================================
-# SECTION 3: WELL-SAMPLED CELLS ANALYSIS (HIGH + FAIR QUALITY)
+# WELL-SAMPLED CELLS ANALYSIS (HIGH + FAIR QUALITY)
 # ============================================================
 # Create subset of High and Fair quality cells
 completeness_subset <- completeness200 %>%
   filter(Quality %in% c("High", "Fair")) %>%
-  select(idcell) # 1446 grid cells (65.69%)
+  select(idcell) # 1,473 grid cells (66.95 %)
 
 # Subset shapefile
 shape200_subset <- shape200 %>%
@@ -1161,7 +1160,7 @@ corr200_subset <- ggplot(cophenetic_results200, aes(x = reorder(Method, -Cophene
     axis.title = element_text(size = 16, family = "sans"),
     legend.text = element_text(size = 16, family = "sans"),
     legend.title = element_text(size = 16, family = "sans"))
-
+corr200_subset
 # ============================================================
 # SECTION 6: OPTIMAL NUMBER OF CLUSTERS DETERMINATION
 # ============================================================
@@ -1172,8 +1171,8 @@ quality_values200 <- optimal_result200$df
 optimal200_subset <- ggplot(quality_values200, aes(x = k, y = ev)) +
   geom_line(color = "grey30", size = 1) +
   geom_point(color = "grey30", size = 3) +
-  geom_vline(xintercept = 7, linetype = "dashed", colour = "black") +
-  geom_point(aes(x = 7, y = 0.51740126), colour = "red", size = 5) +
+  geom_vline(xintercept = 6, linetype = "dashed", colour = "black") +
+  geom_point(aes(x = 6, y = 0.51), colour = "red", size = 5) +
   labs(x = "Number of clusters", y = "Explained variance") +
   theme_bw() +
   theme(
@@ -1182,24 +1181,22 @@ optimal200_subset <- ggplot(quality_values200, aes(x = k, y = ev)) +
     axis.title = element_text(size = 16, family = "sans"),
     legend.text = element_text(size = 16, family = "sans"),
     legend.title = element_text(size = 16, family = "sans"))
-
+optimal200_subset
 # Combine visualizations
 s <- grid.arrange(corr200_subset, optimal200_subset, ncol = 2)
-ggsave("results/Figures/cor-optimal_subset.png", s, dpi = 400, width = 14, height = 8)
-
 # ============================================================
 # SECTION 7: CLUSTER ANALYSIS AND VISUALIZATION
 # ============================================================
 rownames(comm200) <- shape200$idcell
 hc200_subset <- stats::hclust(beta_subset_dist, method = "average")
-clusters200_subset <- cutree(hc200_subset, k = 7)
+clusters200_subset <- cutree(hc200_subset, k = 6)
 
 # Color palette
-colors200_subset <- as.character(paletteer_c("grDevices::Spectral", 7))
+colors200_subset <- as.character(paletteer_c("grDevices::Spectral", 6))
 
 # Dendrogram construction
 dend200_subset <- as.dendrogram(hc200_subset)
-dend200_subset <- color_branches(dend200_subset, k = 7, col = colors200_subset)
+dend200_subset <- color_branches(dend200_subset, k = 6, col = colors200_subset)
 
 # Extract dendrogram information
 dend_order200_subset <- order.dendrogram(dend200_subset)
@@ -1208,7 +1205,7 @@ leaf_colors200_subset <- get_leaves_branches_col(dend200_subset)
 
 # Create group-color mapping
 group_df200_subset <- tibble(
-  idcell = as.integer(leaves200_subset),
+  idcell = leaves200_subset,
   group = clusters200_subset[leaves200_subset],
   color = leaf_colors200_subset) %>% distinct(group, .keep_all = TRUE)
 
@@ -1221,25 +1218,24 @@ bioregion200_subset <- shape200_subset %>%
 # SECTION 8: DENDROGRAM AND MAP VISUALIZATION
 # ============================================================
 # Plot dendrogram
-dend_200_subset <- fviz_dend(dend200_subset, k = 7, show_labels = FALSE, k_colors = colors200_subset,
+dend_200_subset <- fviz_dend(dend200_subset, k = 6, show_labels = FALSE, k_colors = colors200_subset,
                              rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
     axis.text.y = element_text(size = 16, family = "sans"),
     axis.title.y = element_text(size = 16, family = "sans"),
     axis.text.x = element_text(size = 16, family = "sans"),
     axis.title.x = element_text(size = 16, family = "sans")) +
-  ylab("βsim mean") + 
+  ylab("Mean βsim") + 
   xlab("regions")
-
+dend_200_subset
 # Plot map
 map200_subset <- ggplot() +
   geom_sf(data = bioregion200_subset, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
-  theme_bw()
+  theme_map()
+map200_subset
 
-# Save shapefile
-st_write(bioregion200_subset, "results/SIG/bioregion200km_subset.shp")
-
+st_write(bioregion200_subset, "results/SIG/bioregion200km_WELL-SAMPLED_CELLS.gpkg")
 # ============================================================
 # SECTION 9: BEHRMANN PROJECTION MAP
 # ============================================================
@@ -1249,7 +1245,7 @@ map.regions200_subset <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion200_subset, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() + 
-  theme_bw() +
+  theme_map() +
   theme(
     legend.position = "none",
     text = element_text(size = 16),
@@ -1262,14 +1258,12 @@ map.regions200_subset <- ggplot() +
     axis.ticks.y = element_blank(),
     axis.line.y = element_blank()) +
   coord_sf(expand = FALSE)
-
-ggsave("results/Figures/200km_subset.png", map.regions200_subset, dpi = 400, width = 15, height = 10)
-
+map.regions200_subset
 # ============================================================
 # SECTION 10: NMDS ORDINATION
 # ============================================================
 set.seed(123)
-nmds_200_subset <- metaMDS(beta_subset_dist, k = 2, trymax = 50,
+nmds_200_subset <- metaMDS(beta_subset_dist, k = 2, trymax = 100,
                            engine = "monoMDS", autotransform = FALSE)
 
 nmds_points200_subset <- as.data.frame(nmds_200_subset$points)
@@ -1277,7 +1271,7 @@ colnames(nmds_points200_subset) <- c("NMDS1", "NMDS2")
 
 nmds_points200_subset$group <- factor(
   clusters200_subset[row.names(nmds_points200_subset)],
-  levels = 1:7)
+  levels = 1:6)
 
 group_color_map200_subset <- group_df200_subset %>% 
   select(group, dend_color = color) %>%
@@ -1297,25 +1291,23 @@ nmds200_subset <- ggplot(nmds_points200_subset, aes(x = NMDS1, y = NMDS2, colour
   theme(legend.position = "none",
         axis.title = element_text(size = 16, family = "sans"),
         axis.text = element_text(size = 16, family = "sans"))
-
+nmds200_subset
 # ============================================================
 # SECTION 11: COMBINE OUTPUTS
 # ============================================================
 x <- map.regions200_subset / (nmds200_subset + dend_200_subset + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
-
-ggsave("results/Figures/phyloregions200km_subset.png", x, dpi = 400, width = 15, height = 12)
-
-#####################################################################
+x
+####################################################################
 # POORLY-SAMPLED CELLS ANALYSIS (POOR QUALITY)
 #####################################################################
 
 # ============================================================
-# SECTION 12: POORLY-SAMPLED CELLS SUBSET
+# POORLY-SAMPLED CELLS SUBSET
 # ============================================================
 completeness_subset2 <- completeness200 %>%
   filter(Quality %in% c("Poor")) %>%
-  select(idcell) # 677 grid cells (30.7%)
+  select(idcell) # 643 grid cells (30.7%)
 
 shape200_subset2 <- shape200 %>%
   filter(idcell %in% completeness_subset2$idcell)
@@ -1359,7 +1351,7 @@ corr200_subset2 <- ggplot(cophenetic_results200, aes(x = reorder(Method, -Cophen
     axis.title = element_text(size = 16, family = "sans"),
     legend.text = element_text(size = 16, family = "sans"),
     legend.title = element_text(size = 16, family = "sans"))
-
+corr200_subset2
 # ============================================================
 # SECTION 15: OPTIMAL NUMBER OF CLUSTERS
 # ============================================================
@@ -1370,8 +1362,8 @@ quality_values200 <- optimal_result200$df
 optimal200_subset2 <- ggplot(quality_values200, aes(x = k, y = ev)) +
   geom_line(color = "grey30", size = 1) +
   geom_point(color = "grey30", size = 3) +
-  geom_vline(xintercept = 17, linetype = "dashed", colour = "black") +
-  geom_point(aes(x = 17, y = 0.50893697), colour = "red", size = 5) +
+  geom_vline(xintercept = 20, linetype = "dashed", colour = "black") +
+  geom_point(aes(x = 20, y = 0.50121577), colour = "red", size = 5) +
   labs(x = "Number of clusters", y = "Explained variance") +
   theme_bw() +
   theme(
@@ -1380,28 +1372,27 @@ optimal200_subset2 <- ggplot(quality_values200, aes(x = k, y = ev)) +
     axis.title = element_text(size = 16, family = "sans"),
     legend.text = element_text(size = 16, family = "sans"),
     legend.title = element_text(size = 16, family = "sans"))
-
+optimal200_subset2
 ww <- grid.arrange(corr200_subset2, optimal200_subset2, ncol = 2)
-ggsave("results/Figures/cor-optimal_subset2.png", ww, dpi = 400, width = 14, height = 8)
 
 # ============================================================
 # SECTION 16: CLUSTER ANALYSIS AND VISUALIZATION
 # ============================================================
 rownames(comm200) <- shape200$idcell
 hc200_subset2 <- stats::hclust(beta_subset_dist2, method = "average")
-clusters200_subset2 <- cutree(hc200_subset2, k = 17)
+clusters200_subset2 <- cutree(hc200_subset2, k = 20)
 
-colors200_subset2 <- as.character(paletteer_c("grDevices::Spectral", 17))
+colors200_subset2 <- as.character(paletteer_c("grDevices::Spectral", 20))
 
 dend200_subset2 <- as.dendrogram(hc200_subset2)
-dend200_subset2 <- color_branches(dend200_subset2, k = 17, col = colors200_subset2)
+dend200_subset2 <- color_branches(dend200_subset2, k = 20, col = colors200_subset2)
 
 dend_order200_subset2 <- order.dendrogram(dend200_subset2)
 leaves200_subset2 <- labels(dend200_subset2)
 leaf_colors200_subset2 <- get_leaves_branches_col(dend200_subset2)
 
 group_df200_subset2 <- tibble(
-  idcell = as.integer(leaves200_subset2),
+  idcell = leaves200_subset2,
   group = clusters200_subset2[leaves200_subset2],
   color = leaf_colors200_subset2) %>% distinct(group, .keep_all = TRUE)
 
@@ -1412,22 +1403,24 @@ bioregion200_subset2 <- shape200_subset2 %>%
 # ============================================================
 # SECTION 17: DENDROGRAM AND MAP VISUALIZATION
 # ============================================================
-dend_200_subset2 <- fviz_dend(dend200_subset2, k = 17, show_labels = FALSE, k_colors = colors200_subset2,
+dend_200_subset2 <- fviz_dend(dend200_subset2, k = 20, show_labels = FALSE, k_colors = colors200_subset2,
                               rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
     axis.text.y = element_text(size = 16, family = "sans"),
     axis.title.y = element_text(size = 16, family = "sans"),
     axis.text.x = element_text(size = 16, family = "sans"),
     axis.title.x = element_text(size = 16, family = "sans")) +
-  ylab("βsim mean") + 
+  ylab("Mean βsim") + 
   xlab("regions")
+dend_200_subset2
 
 map200_subset2 <- ggplot() +
   geom_sf(data = bioregion200_subset2, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
   theme_bw()
+map200_subset2
 
-st_write(bioregion200_subset2, "results/SIG/bioregion200km_subset2.shp")
+st_write(bioregion200_subset2, "results/SIG/bioregion200km_POORLY-SAMPLED_CELLS.gpkg")
 
 # ============================================================
 # SECTION 18: BEHRMANN PROJECTION MAP
@@ -1438,7 +1431,7 @@ map.regions200_subset2 <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion200_subset2, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() + 
-  theme_bw() +
+  theme_map() +
   theme(
     legend.position = "none",
     text = element_text(size = 16),
@@ -1451,12 +1444,12 @@ map.regions200_subset2 <- ggplot() +
     axis.ticks.y = element_blank(),
     axis.line.y = element_blank()) +
   coord_sf(expand = FALSE)
-
+map.regions200_subset2
 # ============================================================
 # SECTION 19: NMDS ORDINATION
 # ============================================================
 set.seed(123)
-nmds_200_subset2 <- metaMDS(beta_subset_dist2, k = 2, trymax = 50,
+nmds_200_subset2 <- metaMDS(beta_subset_dist2, k = 2, trymax = 100,
                             engine = "monoMDS", autotransform = FALSE)
 
 nmds_points200_subset2 <- as.data.frame(nmds_200_subset2$points)
@@ -1464,7 +1457,7 @@ colnames(nmds_points200_subset2) <- c("NMDS1", "NMDS2")
 
 nmds_points200_subset2$group <- factor(
   clusters200_subset2[row.names(nmds_points200_subset2)],
-  levels = 1:17)
+  levels = 1:20)
 
 group_color_map200_subset2 <- group_df200_subset2 %>% 
   select(group, dend_color = color) %>%
@@ -1484,15 +1477,14 @@ nmds200_subset2 <- ggplot(nmds_points200_subset2, aes(x = NMDS1, y = NMDS2, colo
   theme(legend.position = "none",
         axis.title = element_text(size = 16, family = "sans"),
         axis.text = element_text(size = 16, family = "sans"))
-
+nmds200_subset2
 # ============================================================
 # SECTION 20: COMBINE OUTPUTS
 # ============================================================
 yy <- map.regions200_subset2 / (nmds200_subset2 + dend_200_subset2 + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
-
-ggsave("results/Figures/phyloregions200km_subset2.png", yy, dpi = 400, width = 15, height = 12)
-
+yy
+x
 #####################################################################
 # SORENSEN INDEX ANALYSIS
 #####################################################################
@@ -1501,7 +1493,7 @@ ggsave("results/Figures/phyloregions200km_subset2.png", yy, dpi = 400, width = 1
 # SECTION 21: SORENSEN INDEX REGIONALIZATION
 # ============================================================
 load(file = "processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_200.RData")
-shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/shape_reduce200.shp")
+shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_200km.gpkg")
 
 # ============================================================
 # SECTION 22: CLUSTERING METHOD EVALUATION
@@ -1529,7 +1521,7 @@ corr200_sor <- ggplot(cophenetic_results200_sor, aes(x = reorder(Method, -Cophen
     axis.title = element_text(size = 16, family = "sans"),
     legend.text = element_text(size = 16, family = "sans"),
     legend.title = element_text(size = 16, family = "sans"))
-
+corr200_sor
 # ============================================================
 # SECTION 23: OPTIMAL NUMBER OF CLUSTERS
 # ============================================================
@@ -1540,8 +1532,8 @@ quality_values200_sor <- optimal_result200_sor$df
 optimal200_sor <- ggplot(quality_values200_sor, aes(x = k, y = ev)) +
   geom_line(color = "grey30", size = 1) +
   geom_point(color = "grey30", size = 3) +
-  geom_vline(xintercept = 8, linetype = "dashed", colour = "black") +
-  geom_point(aes(x = 8, y = 0.346561644), colour = "red", size = 5) +
+  geom_vline(xintercept = 9, linetype = "dashed", colour = "black") +
+  geom_point(aes(x = 9, y = 0.34), colour = "red", size = 5) +
   labs(x = "Number of clusters", y = "Explained variance") +
   theme_bw() +
   theme(
@@ -1550,28 +1542,26 @@ optimal200_sor <- ggplot(quality_values200_sor, aes(x = k, y = ev)) +
     axis.title = element_text(size = 16, family = "sans"),
     legend.text = element_text(size = 16, family = "sans"),
     legend.title = element_text(size = 16, family = "sans"))
-
+optimal200_sor
 i <- grid.arrange(corr200_sor, optimal200_sor, ncol = 2)
-ggsave("results/Figures/cor-optimal_sor.png", i, dpi = 400, width = 14, height = 8)
-
 # ============================================================
 # SECTION 24: CLUSTER ANALYSIS AND VISUALIZATION
 # ============================================================
 rownames(comm200) <- shape200$idcell
 hc200_sor <- stats::hclust(beta_sor_mean200, method = "average")
-clusters200_sor <- cutree(hc200_sor, k = 8)
+clusters200_sor <- cutree(hc200_sor, k = 9)
 
-colors200_sor <- as.character(paletteer_c("grDevices::Spectral", 8))
+colors200_sor <- as.character(paletteer_c("grDevices::Spectral", 9))
 
 dend200_sor <- as.dendrogram(hc200_sor)
-dend200_sor <- color_branches(dend200_sor, k = 8, col = colors200_sor)
+dend200_sor <- color_branches(dend200_sor, k = 9, col = colors200_sor)
 
 dend_order200_sor <- order.dendrogram(dend200_sor)
 leaves200_sor <- labels(dend200_sor)
 leaf_colors200_sor <- get_leaves_branches_col(dend200_sor)
 
 group_df200_sor <- tibble(
-  idcell = as.integer(leaves200_sor),
+  idcell = leaves200_sor,
   group = clusters200_sor[leaves200_sor],
   color = leaf_colors200_sor) %>% distinct(group, .keep_all = TRUE)
 
@@ -1582,22 +1572,24 @@ bioregion200_sor <- shape200 %>%
 # ============================================================
 # SECTION 25: DENDROGRAM AND MAP VISUALIZATION
 # ============================================================
-dend_200_sor <- fviz_dend(dend200_sor, k = 8, show_labels = FALSE, k_colors = colors200_sor,
+dend_200_sor <- fviz_dend(dend200_sor, k = 9, show_labels = FALSE, k_colors = colors200_sor,
                           rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
     axis.text.y = element_text(size = 16, family = "sans"),
     axis.title.y = element_text(size = 16, family = "sans"),
     axis.text.x = element_text(size = 16, family = "sans"),
     axis.title.x = element_text(size = 16, family = "sans")) +
-  ylab("βsim mean") + 
+  ylab("Mean βsim") + 
   xlab("regions")
+dend_200_sor
 
 map200_sor <- ggplot() +
   geom_sf(data = bioregion200_sor, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
   theme_bw()
+map200_sor
 
-st_write(bioregion200_sor, "results/SIG/bioregion200km_sorensen.shp")
+st_write(bioregion200_sor, "results/SIG/bioregion200km_sorensen.gpkg")
 
 # ============================================================
 # SECTION 26: BEHRMANN PROJECTION MAP
@@ -1608,7 +1600,7 @@ map.regions200_sor <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion200_sor, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() + 
-  theme_bw() +
+  theme_map() +
   theme(
     legend.position = "none",
     text = element_text(size = 16),
@@ -1621,9 +1613,7 @@ map.regions200_sor <- ggplot() +
     axis.ticks.y = element_blank(),
     axis.line.y = element_blank()) +
   coord_sf(expand = FALSE)
-
-ggsave("results/Figures/200km.png", map.regions200, dpi = 400, width = 15, height = 10)
-
+map.regions200_sor
 # ============================================================
 # SECTION 27: NMDS ORDINATION
 # ============================================================
@@ -1636,7 +1626,7 @@ colnames(nmds_points200_sor) <- c("NMDS1", "NMDS2")
 
 nmds_points200_sor$group <- factor(
   clusters200_sor[row.names(nmds_points200_sor)],
-  levels = 1:8)
+  levels = 1:9)
 
 group_color_map200_sor <- group_df200_sor %>% 
   select(group, dend_color = color) %>%
@@ -1656,23 +1646,22 @@ nmds200_sor <- ggplot(nmds_points200_sor, aes(x = NMDS1, y = NMDS2, colour = fac
   theme(legend.position = "none",
         axis.title = element_text(size = 16, family = "sans"),
         axis.text = element_text(size = 16, family = "sans"))
-
+nmds200_sor
 # ============================================================
 # SECTION 28: COMBINE OUTPUTS
 # ============================================================
 w <- map.regions200_sor / (nmds200_sor + dend_200_sor + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
-
-ggsave("results/Figures/phyloregions200km_sorensen.png", w, dpi = 400, width = 15, height = 12)
-
+w
 # ============================================================
 # SECTION 29: COMBINE ALL MAPS
 # ============================================================
-final_plot <- (wrap_elements(b) + wrap_elements(x)) / 
-  (wrap_elements(yy) + wrap_elements(w)) +
-  plot_layout(nrow = 2)
-
-ggsave("results/Figures/phyloregions200km_validation.png", final_plot, dpi = 400, width = 18, height = 15)
+final_plot <- wrap_elements(x) / 
+  wrap_elements(yy) / 
+  wrap_elements(w) +
+  plot_layout(ncol = 1)
+final_plot
+ggsave("results/Figures/phyloregions200km_validation.png", final_plot, dpi = 400, width = 10, height = 18)
 
 #####################################################################
 # COMPARATIVE ANALYSIS
@@ -1685,9 +1674,9 @@ ggsave("results/Figures/phyloregions200km_validation.png", final_plot, dpi = 400
 v.measure<-vmeasure_calc(bioregion200, bioregion200_sor, group,group, B = 1, precision = NULL)
 v.measure
 #The SABRE results:
-#V-measure: 0.81 
+#V-measure: 0.83 
 #Homogeneity: 0.86 
-#Completeness: 0.77 
+#Completeness: 0.81 
 p1 <- ggplot(v.measure$map1) + geom_sf(aes(fill = rih)) +
   scale_fill_viridis_c(option = "B", direction = -1, name = "rih") +  # option C
   ggtitle("Bioregion mean βsim ") +
@@ -1699,14 +1688,14 @@ p2 <- ggplot(v.measure$map2) + geom_sf(aes(fill = rih)) +
   theme_bw(base_size = 16,base_family = "sans")
 final1<-p1 / p2
 final1
-ggsave("results/Figures/phyloregions200km_sim-sor-V-measure.png", final1, dpi = 400, width = 15, height = 12)
 # Goodness-of-fit between Simpson and Sorensen
 # Mapcurves calculation: It calculates the Mapcurves's goodness-of-fit (GOF)
 map.curv<-mapcurves_calc(bioregion200, bioregion200_sor, group,group, precision = NULL)
 map.curv
 #The MapCurves results:
-#The goodness of fit: 0.89 
+#The goodness of fit: 0.91 
 #Reference map: x 
+
 # ============================================================
 # SECTION 31: SIMPSON VS WELL-SAMPLED SUBSET COMPARISON
 # ============================================================
@@ -1714,8 +1703,8 @@ map.curv
 v.measure2<-vmeasure_calc(bioregion200, bioregion200_subset, group,group, B = 1, precision = NULL)
 v.measure2
 #The SABRE results:
-#V-measure: 0.94 
-#Homogeneity: 0.94 
+#V-measure: 0.93 
+#Homogeneity: 0.92 
 #Completeness: 0.93 
 p3 <- ggplot(v.measure2$map1) + geom_sf(aes(fill = rih)) +
   scale_fill_viridis_c(option = "B", direction = -1, name = "rih") +  # option C
@@ -1729,13 +1718,12 @@ p4 <- ggplot(v.measure2$map2) + geom_sf(aes(fill = rih)) +
 p3 / p4
 final2<-p3 / p4
 final2
-ggsave("results/Figures/phyloregions200km_sim-subset-V-measure.png", final2, dpi = 400, width = 15, height = 12)
 # Goodness-of-fit between Simpson and subset
 # Mapcurves calculation: It calculates the Mapcurves's goodness-of-fit (GOF)
 map.curv2<-mapcurves_calc(bioregion200, bioregion200_subset, group,group, precision = NULL)
 map.curv2
 #The MapCurves results:
-#The goodness of fit: 0.92 
+#The goodness of fit: 0.98
 #Reference map: x 
 # ============================================================
 # SECTION 32: SIMPSON VS POOR-SAMPLED SUBSET COMPARISON
@@ -1744,9 +1732,9 @@ map.curv2
 v.measure3<-vmeasure_calc(bioregion200, bioregion200_subset2, group,group, B = 1, precision = NULL)
 v.measure3
 #The SABRE results:
-#V-measure: 0.81
-#Homogeneity: 0.97 
-#Completeness: 0.71 
+#V-measure: 0.82
+#Homogeneity: 0.94 
+#Completeness: 0.72 
 p5 <- ggplot(v.measure3$map1) + geom_sf(aes(fill = rih)) +
   scale_fill_viridis_c(option = "B", direction = -1, name = "rih") +  # option C
   ggtitle("Bioregion mean βsim all data ") +
@@ -1757,13 +1745,10 @@ p6 <- ggplot(v.measure3$map2) + geom_sf(aes(fill = rih)) +
   ggtitle("Bioregion mean βsim subset2") +
   theme_bw(base_size = 16,base_family = "sans")
 p5 / p6
-final3<-p5 / p6
-final3
-ggsave("results/Figures/phyloregions200km_sim-subset2-V-measure.png", final3, dpi = 400, width = 15, height = 12)
 # Goodness-of-fit between Simpson and subset2
 # Mapcurves calculation: It calculates the Mapcurves's goodness-of-fit (GOF)
 map.curv3<-mapcurves_calc(bioregion200, bioregion200_subset2, group,group, precision = NULL)
 map.curv3
 #The MapCurves results:
-#The goodness of fit: 0.88 
+#The goodness of fit: 0.87 
 #Reference map: x
