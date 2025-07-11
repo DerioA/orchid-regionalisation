@@ -70,7 +70,7 @@ corr
 ## Step 4: Determine Optimal Number of Clusters (k)
 ## Using explained variance to guide number of regions
 ## ============================================================
-optimal_result <- optimal_phyloregion(beta_sim_mean100, method = "average", k = 20)
+optimal_result <- optimal_phyloregion(beta_sim_mean100, method = "average", k = 30)
 print(optimal_result$optimal)
 quality_values <- optimal_result$df#ev = 0.46255309
 
