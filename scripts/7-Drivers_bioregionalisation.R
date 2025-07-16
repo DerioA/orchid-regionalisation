@@ -24,7 +24,7 @@ temp_mean <- rast(paste0(chelsa_path, "CHELSA_bio1_1981-2010_V.2.1.tif"))
 prec_annual <- rast(paste0(chelsa_path, "CHELSA_bio12_1981-2010_V.2.1.tif"))
 temp_seasonality <- rast(paste0(chelsa_path, "CHELSA_bio4_1981-2010_V.2.1.tif"))
 prec_seasonality <- rast(paste0(chelsa_path, "CHELSA_bio15_1981-2010_V.2.1.tif"))
-elevation <- rast(paste0(chelsa_path, "elevation_1KMmd_GMTEDmd-2.tif"))
+elevation <- rast(paste0(chelsa_path, "elevation_1KMmn_GMTEDmn.tif"))
 LGM_temp <- rast(paste0(chelsa_path, "CHELSA_PMIP_CCSM4_BIO_01.tif"))
 LGM_prec <- rast(paste0(chelsa_path, "CHELSA_PMIP_CCSM4_BIO_12.tif"))
 

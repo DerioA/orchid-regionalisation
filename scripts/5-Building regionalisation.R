@@ -262,7 +262,7 @@ corr200
 ## ============================================================
 ## Step 4: Determine Optimal Number of Clusters (k)
 ## ============================================================
-optimal_result200 <- optimal_phyloregion(beta_sim_mean200, method = "average", k = 20)
+optimal_result200 <- optimal_phyloregion(beta_sim_mean200, method = "average", k = 30)
 optimal_result200$optimal#EV=0.51
 quality_values200 <- optimal_result200$df
 
@@ -492,7 +492,7 @@ corr400
 ## ============================================================
 ## Step 4: Determine Optimal Number of Clusters (k)
 ## ============================================================
-optimal_result400 <- optimal_phyloregion(beta_sim_mean400, method = "average", k = 20)
+optimal_result400 <- optimal_phyloregion(beta_sim_mean400, method = "average", k = 30)
 optimal_result400$optimal
 quality_values400 <- optimal_result400$df
 
@@ -667,8 +667,8 @@ corr800
 ## ============================================================
 ## Step 4: Determine Optimal Number of Clusters (k)
 ## ============================================================
-optimal_result800 <- optimal_phyloregion(beta_sim_mean800, method = "average", k = 20)
-optimal_result800$optimal
+optimal_result800 <- optimal_phyloregion(beta_sim_mean800, method = "average", k = 30)
+optimal_result800$optimal#ev 0.80
 quality_values800 <- optimal_result800$df
 
 optimal800 <- ggplot(quality_values800, aes(x = k, y = ev)) +
