@@ -6,6 +6,7 @@
 #############################################################
 rm(list = ls())  # Clear environment
 ## ============================================================
+#1.- Biogeographical Regionalisation using Hierarchical
 ## Step 1: Load Required Packages
 ## ============================================================
 library(sf)              # Handle spatial vector data
@@ -830,6 +831,7 @@ all_algorithm <- grid.arrange(e, f, g, h,
 ggsave("results/Figures/all-algorithm.png", all_algorithm, dpi = 400, width = 20, height = 13)
 
 ###################################################################
+### 2.- Sensitivity analyses
 ###################################################################
 ### ============================================================
 ##                   Sensitivity analyses   
@@ -1060,7 +1062,7 @@ print(grain_comparison)
 #4          800        0.3166438
 
 #####################################################################
-# VALIDATION ANALYSIS
+### 3.- Validation
 # Regionalization using only well-sampled cells (200km resolution)
 #####################################################################
 
@@ -1484,7 +1486,7 @@ nmds200_subset2
 yy <- map.regions200_subset2 / (nmds200_subset2 + dend_200_subset2 + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
 yy
-x
+
 #####################################################################
 # SORENSEN INDEX ANALYSIS
 #####################################################################
@@ -1579,7 +1581,7 @@ dend_200_sor <- fviz_dend(dend200_sor, k = 9, show_labels = FALSE, k_colors = co
     axis.title.y = element_text(size = 16, family = "sans"),
     axis.text.x = element_text(size = 16, family = "sans"),
     axis.title.x = element_text(size = 16, family = "sans")) +
-  ylab("Mean βsim") + 
+  ylab("Mean βSør") + 
   xlab("regions")
 dend_200_sor
 
@@ -1618,7 +1620,7 @@ map.regions200_sor
 # SECTION 27: NMDS ORDINATION
 # ============================================================
 set.seed(123)
-nmds_200_sor <- metaMDS(beta_sor_mean200, k = 2, trymax = 50,
+nmds_200_sor <- metaMDS(beta_sor_mean200, k = 2, trymax = 100,
                         engine = "monoMDS", autotransform = FALSE)
 
 nmds_points200_sor <- as.data.frame(nmds_200_sor$points)
@@ -1662,6 +1664,15 @@ final_plot <- wrap_elements(x) /
   plot_layout(ncol = 1)
 final_plot
 ggsave("results/Figures/phyloregions200km_validation.png", final_plot, dpi = 400, width = 10, height = 18)
+
+#CONMBINE SUPPLEMENTARY FIGURES
+# Number of clusters and clustering algorithm
+all_algorithm2 <- grid.arrange(s, ww, i,
+                               layout_matrix = rbind(c(1),
+                                                     c(2),
+                                                     c(3)),
+                               heights = c(1, 1, 1))
+ggsave("results/Figures/all-algorithm2.png", all_algorithm2, dpi = 400, width = 12, height = 15)
 
 #####################################################################
 # COMPARATIVE ANALYSIS
