@@ -220,6 +220,7 @@ nmds100
 a <- map.regions100 / (nmds100 + dend_100 + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
 a
+
 ###################################################################
 ### ============================================================
 ##                             200 KM
@@ -310,13 +311,13 @@ group_df200 <- tibble(
   group = clusters200[leaves200],
   color = leaf_colors200) %>% 
   distinct(group, .keep_all = TRUE)  # One colour per group
-
+str(group_df200)
 ## Assign colours to spatial data
 bioregion200 <- shape200 %>% 
   mutate(group = clusters200[as.character(idcell)]) %>% 
   left_join(group_df200 %>%
   select(group, color), by = "group")
-
+str(bioregion200)
 # Plot the dendrogram
 dend_200 <- fviz_dend(dend200, k = 6, show_labels = FALSE, k_colors = colors200,
                       rect = FALSE, horiz = FALSE, main = "") + 
@@ -1060,7 +1061,554 @@ print(grain_comparison)
 #2          200        0.3398030
 #3          400        0.2022927
 #4          800        0.3166438
+################################################################################
+################################################################################
 
+#############################################################
+### Biogeographical Regionalisation with Realm/Region Split
+#############################################################
+rm(list = ls())  # Clear environment
+
+## ============================================================
+## Load Required Packages
+## ============================================================
+library(sf)
+library(phyloregion)
+library(ape)
+library(cluster)
+library(recluster)
+library(rnaturalearth)
+library(ggplot2)
+library(cowplot)
+library(ggthemes)
+library(factoextra)
+library(dplyr)
+library(dendextend)
+library(paletteer)
+library(gridExtra)
+library(vegan)
+library(patchwork)
+library(sabre)
+library(viridis)
+library(ggforce) # for ellipses in NMDS
+library(ggdendro) # To work with dendrograms in ggplot
+library(ggplotify)
+library(bioregion)
+
+### ============================================================
+##                             200 KM
+## ============================================================
+## Load Input Files
+## ============================================================
+comm200 <- readRDS("processed-data/community_matrix/pam/pam_200km.rds")
+load(file = "processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_200.RData")
+shape200 <- st_read(dsn = "processed-data/community_matrix/pam_shape/grid_200km.gpkg")
+rm(beta_sne_mean200, beta_sor_mean200)
+
+## ============================================================
+## Obtain kingdoms and regions based on the method of Holt et al. (2013)
+## ============================================================
+
+# Convert dissimilarity to bioregion format
+convert_dist_to_bioregion <- function(dist_obj, metric_name = "Simpson", nb_species = NA) {
+  if (!inherits(dist_obj, "dist")) stop("Objeto debe ser de clase 'dist'.")
+  labels <- attr(dist_obj, "Labels")
+  mat <- as.matrix(dist_obj)
+  df <- data.frame(
+    Site1 = rep(labels, times = length(labels)),
+    Site2 = rep(labels, each = length(labels)),
+    value = as.vector(mat),
+    stringsAsFactors = FALSE
+  )
+  df <- df[df$Site1 < df$Site2, ]
+  colnames(df)[3] <- metric_name
+  class(df) <- c("bioregion.pairwise.metric", "data.frame")
+  attr(df, "type") <- "dissimilarity"
+  attr(df, "nb_sites") <- attr(dist_obj, "Size")
+  attr(df, "nb_species") <- nb_species
+  return(df)
+}
+
+dissim_br <- convert_dist_to_bioregion(beta_sim_mean200, metric_name = "Simpson")
+
+# Adjust consensus hierarchy tree
+tree.orchids <- hclu_hierarclust(dissim_br, n_clust = 2:100,n_runs = 500,
+                          index = names(dissim_br)[3],method = "average",
+                          keep_trials = FALSE,randomize = TRUE,
+                          optimal_tree_method = "iterative_consensus_tree")
+eval_tree4 <- bioregionalization_metrics(tree.orchids, dissimilarity = dissim_br, eval_metric = "pc_distance")
+clusters.evaluation<-eval_tree4$evaluation_df
+write_csv(clusters.evaluation, file = "results/table/cluesters.evaluation.csv")
+realms.regions <- find_optimal_n(eval_tree4, metrics_to_use = "pc_distance", criterion = "cutoff", metric_cutoffs = c(.8,.85))
+optimal_realms <- realms.regions$optimal_nb_clusters$pc_distance[1]  # 6
+optimal_regions <- realms.regions$optimal_nb_clusters$pc_distance[2] # 15
+
+clusters_realm200 <- tree.orchids$clusters[[paste0("K_", optimal_realms)]]
+clusters_region200 <- tree.orchids$clusters[[paste0("K_", optimal_regions)]]
+table(clusters_region200)
+# Assign cell names
+names(clusters_realm200) <- rownames(tree.orchids$clusters)
+names(clusters_region200) <- rownames(tree.orchids$clusters)
+
+# Merge regions with fewer than 10 cells
+shape200$region <- clusters_region200[as.character(shape200$idcell)]
+nb <- spdep::poly2nb(shape200, queen = TRUE)
+
+region_sizes <- table(shape200$region)
+region_sizes
+small_regions <- names(region_sizes[region_sizes < 10])
+
+for (reg in small_regions) {
+  idx_small <- which(shape200$region == reg)
+  neigh_regs <- unlist(nb[idx_small])
+  neighbor_regions <- unique(shape200$region[neigh_regs])
+  neighbor_regions <- neighbor_regions[neighbor_regions != reg]
+  if (length(neighbor_regions) > 0) {
+    sizes <- table(shape200$region)
+    best_region <- neighbor_regions[which.max(sizes[neighbor_regions])]
+    shape200$region[idx_small] <- best_region
+  }
+}
+
+clusters_region200 <- shape200$region
+names(clusters_region200) <- shape200$idcell
+table(clusters_region200)
+# Graphing to define colours
+# Ensure that shape200_sf has the assigned clusters
+
+# Map with cluster numbers
+ggplot(shape200) +
+  geom_sf(fill = "lightblue", color = "grey50", size = 0.1) +  # celdas rellenas
+  geom_sf_text(aes(label = region), size = 2, color = "black") + # números sobre celdas
+  theme_minimal() +
+  ggtitle("Mapa de regiones filogenéticas (número de cluster)")
+
+# Prepare dendrogram of regions and colours
+best.hclust <- tree.orchids$algorithm$final.tree
+saveRDS(best.hclust, file = "results/table/best_hclust_orchids.rds")
+best.hclust$labels <- names(clusters_region200)
+dend200 <- as.dendrogram(best.hclust)
+plot(dend200)
+# Fixed palette of 10 regions
+colors200_region <- as.character(paletteer_c("grDevices::Spectral", 10))
+final_clusters <- sort(unique(clusters_region200))
+names(colors200_region) <- final_clusters
+
+dend200_colored <- color_branches(dend200, k = length(final_clusters), col = colors200_region)
+leaf_colors <- colors200_region[as.character(clusters_region200[labels(dend200_colored)])]
+dend200_colored <- assign_values_to_leaves_nodePar(dend200_colored, leaf_colors, "lab.col")
+labels(dend200_colored) <- rep("", length(labels(dend200_colored)))
+ggdend <- as.ggdend(dend200_colored)
+dend_200 <- ggplot(ggdend) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size = 16, family = "sans"),
+    axis.title = element_text(size = 16, family = "sans")
+  ) +
+  ylab("Mean βsim") +
+  xlab("Regions")
+dend_200
+
+# ======================================================
+# phylogenetic dendrogram of regions (collapsing branches)
+# Convert consensus tree to phylo
+phylo_tree <- as.phylo(as.hclust(tree.orchids$algorithm$final.tree))
+
+# Define clusters and colours
+final_clusters <- sort(unique(clusters_region200))
+final_clusters
+colors_region <- c("#584B9FFF","#FCDE85FF","#584B9FFF","#A71B4BFF",
+                   "#ED820AFF","#FCDE85FF","#BAEEAEFF","#BAEEAEFF",
+                   "#00B1B5FF","#00B1B5FF")
+names(colors_region) <- final_clusters
+
+# Collapse leaves: keep n_keep leaves per cluster
+n_keep <- 4
+keep_leaves <- unlist(lapply(final_clusters, function(cl){
+  leaves <- names(clusters_region200[clusters_region200 == cl])
+  head(leaves, n_keep)
+}))
+tips_to_drop <- setdiff(phylo_tree$tip.label, keep_leaves)
+phylo_partial <- drop.tip(phylo_tree, tips_to_drop)
+
+
+# Assign clusters to collapsed sheets
+leaf_clusters <- factor(clusters_region200[phylo_partial$tip.label], 
+                        levels = final_clusters)
+
+# Crear ggtree phylogenetic
+g <- ggtree(phylo_partial, layout = "equal_angle",branch.length = 'none', size = 1.5)
+
+# Optimised cluster propagation
+cluster_vec <- rep(NA, nrow(g$data))
+names(cluster_vec) <- as.character(g$data$node)
+for (tip in phylo_partial$tip.label) {
+  tip_node <- which(g$data$label == tip)
+  cluster_vec[as.character(g$data$node[tip_node])] <- as.character(leaf_clusters[tip])
+}
+for (i in seq_len(nrow(g$data))) {
+  node_id <- g$data$node[i]
+  if (!is.na(cluster_vec[as.character(node_id)])) next
+  children <- g$data$node[g$data$parent == node_id]
+  child_clusters <- unique(na.omit(cluster_vec[as.character(children)]))
+  if (length(child_clusters) == 1) cluster_vec[as.character(node_id)] <- child_clusters
+}
+g$data$cluster <- factor(cluster_vec, levels = final_clusters)
+
+# Draw branches in black + coloured circles at the tips
+branches <- g$data[g$data$parent != 0, ]
+branches$parent_x <- g$data$x[match(branches$parent, g$data$node)]
+branches$parent_y <- g$data$y[match(branches$parent, g$data$node)]
+
+# Separate root
+root_node <- g$data$node[g$data$parent == 0]
+root_branches <- branches[branches$parent %in% root_node, ]
+other_branches <- branches[!branches$parent %in% root_node, ]
+
+p1 <- g +
+  # black branches
+  geom_segment(data = root_branches,
+               aes(x = parent_x, y = parent_y, xend = x, yend = y),
+               color = "black", linewidth = 1.5) +
+  geom_segment(data = other_branches,
+               aes(x = parent_x, y = parent_y, xend = x, yend = y),
+               color = "black", linewidth = 1.5) +
+  # Coloured circles on the tips
+  geom_point(data = g$data[g$data$isTip, ],
+             aes(x = x, y = y, color = cluster),
+             size = 3, show.legend = FALSE) +
+  scale_color_manual(values = colors_region, na.value = "grey50") +
+  theme_bw() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    plot.margin = margin(10, 10, 10, 10))
+
+p1
+
+# Assign region colours to the shapefile
+shape200$region <- clusters_region200[shape200$idcell]
+shape200$realm  <- clusters_realm200[shape200$idcell]
+
+# Palletes
+colors200_realms  <- as.character(paletteer_c("grDevices::Spectral", 6))
+names(colors200_realms) <- sort(unique(shape200$realm))
+names(colors200_region) <- sort(unique(shape200$region))
+
+shape200$color_realm  <- colors200_realms[shape200$realm]
+shape200$color_region <- colors200_region[shape200$region]
+
+# Graficar mapas
+# Map of regions
+ggplot(shape200) +
+  geom_sf(aes(fill = color_region)) +
+  scale_fill_identity() +
+  theme_bw() +
+  labs(title = "Mapa de 11 regiones biogeográficas")
+
+# Map of kingdoms
+ggplot(shape200) +
+  geom_sf(aes(fill = color_realm)) +
+  scale_fill_identity() +
+  theme_bw() +
+  labs(title = "Mapa de 6 reinos biogeográficos")
+
+# Guardar shapefile final
+st_write(shape200, "results/SIG/bioregion200km_realms-bioregions.gpkg")
+
+##Now, graph
+# Ensure that 'realm' is a character so that the numbers are displayed correctly.
+shape200$realm <- as.character(shape200$realm)
+
+# Plot the kingdom numbers in each cell.
+ggplot(shape200) +
+  geom_sf(fill = NA, color = "grey40", size = 0.1) +  # only polygons without fill
+  geom_sf_text(aes(label = realm), size = 3, color = "black") + # kingdom numbers
+  theme_bw() +
+  labs(title = "Mapa de celdas con números de reinos") +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank())
+
+cluster_to_realm <- c(
+  "1" = "Holartic",
+  "2" = "Australian",
+  "3" = "Chile-Patagonian",
+  "4" = "Neotropical",
+  "5" = "Afrotropical",
+  "6" = "Indo-Malaysian")
+# Assign kingdom names to each cell
+shape200$realm_name <- cluster_to_realm[as.character(shape200$realm)]
+
+# 3. Create a manual colour vector in the order you want
+manual_realm_colors <- c(
+  "Australian"       = "#A71B4BFF",
+  "Chile-Patagonian" = "#ED820AFF", 
+  "Neotropical"      = "#FCDE85FF", 
+  "Afrotropical"     = "#BAEEAEFF",  
+  "Indo-Malaysian"   = "#00B1B5FF",  
+  "Holartic"         = "#584B9FFF")
+
+# 4. Assign colours according to kingdom names
+shape200$color_realm <- manual_realm_colors[shape200$realm_name]
+colors.200<-c("#A71B4BFF","#ED820AFF","#FCDE85FF",
+              "#BAEEAEFF","#00B1B5FF","#584B9FFF")
+# 5. Check
+table(shape200$realm_name)
+table(shape200$color_realm)
+
+# 6. Plot kingdoms with manual names and colours
+ggplot(shape200) +
+  geom_sf(aes(fill = color_realm), color = "grey40", size = 0.1) +
+  scale_fill_identity() +
+  theme_bw() +
+  labs(title = "Mapa de 6 reinos biogeográficos") +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank())
+
+## ============================================================
+## Map with Behrmann Projection
+## ============================================================
+bioregion200 <- st_transform(shape200, behrmann)
+
+# Draw base map with coloured regions
+ggplot() +
+  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = bioregion200, aes(fill = color_region), colour = NA, size = 0.1) +
+  # Display region IDs centred in each cell
+  geom_sf_text(aes(geometry = geom, label = region), data = bioregion200, 
+               size = 3, colour = "black") +
+  scale_fill_identity() +
+  theme_map() +
+  theme(legend.position = "bottom") +
+  coord_sf(expand = FALSE)
+
+# Select only the desired regions and merge geometries by region
+regions_union <- bioregion200 %>%
+  filter(region %in% c("1", "14", "6", "8")) %>%
+  group_by(region) %>%
+  summarise(geometry = st_union(geom), .groups = "drop") %>%
+  st_as_sf() %>%
+  st_transform(behrmann)
+#Check first
+ggplot() +
+  geom_sf(data = regions_union, fill = NA, colour = "black", size = 0.5, linetype = "dashed") +
+  theme_minimal() +
+  labs(title = "Contornos de regiones seleccionadas")
+
+# With names of kingdoms
+groups <- c("Australian","Chile-Patagonian","Neotropical",
+            "Afrotropical","Indo-Malaysian","Holarctic")
+
+# Convert regions to lines
+lines_union <- st_cast(regions_union, "MULTILINESTRING")
+
+contor <- ggplot() +
+  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = bioregion200, aes(fill = color_realm), colour = NA, size = 0) +
+  # Draw thick lines of the regions
+  geom_sf(data = lines_union, colour = "black", size = 30, linetype = "solid") +
+  scale_fill_identity(
+    name = NULL,
+    breaks = colors.200,
+    labels = groups,
+    guide = guide_legend(
+      nrow = 1, # Horizontal legend
+      title.position = "top",
+      label.position = "bottom",
+      keywidth = unit(1.2, "cm"),
+      keyheight = unit(0.5, "cm"),
+      direction = "horizontal")) +
+  theme_map() +
+  theme(
+    text = element_text(family = "sans", size = 30),
+    legend.position = "bottom",
+    legend.justification = "center",
+    legend.box.just = "center",
+    legend.margin = margin(t = 10, b = 5),
+    legend.spacing.x = unit(1, "cm")) +
+  theme(
+    text = element_text(size = 30),
+    axis.title.x = element_blank(),        
+    axis.text.x = element_blank(),     
+    axis.ticks.x = element_blank(),    
+    axis.line.x = element_blank(),    
+    axis.title.y = element_blank(),    
+    axis.text.y = element_blank(),    
+    axis.ticks.y = element_blank(),    
+    axis.line.y = element_blank()) +
+  coord_sf(expand = FALSE)
+      
+contor
+
+
+## ============================================================
+## NMDS for Realms (6 groups)
+## ============================================================
+set.seed(123)
+nmds_realms <- metaMDS(beta_sim_mean200, k = 2, trymax = 100,
+                       engine = "monoMDS", autotransform = FALSE)
+
+nmds_points_realms <- as.data.frame(nmds_realms$points)
+colnames(nmds_points_realms) <- c("NMDS1", "NMDS2")
+
+# Assign realm groups
+nmds_points_realms$group <- factor(
+  shape200$realm_name[match(row.names(nmds_points_realms), shape200$idcell)],
+  levels = names(manual_realm_colors))
+
+nmds_realms_plot <- ggplot(nmds_points_realms, aes(x = NMDS1, y = NMDS2, colour = group)) +
+  geom_point(size = 2, alpha = 0.6) +
+  scale_color_manual(values = manual_realm_colors) +
+  labs(x = "NMDS 1", y = "NMDS 2", title = "") +
+  annotate("text", 
+           x = min(nmds_points_realms$NMDS1), 
+           y = min(nmds_points_realms$NMDS2), 
+           label = paste("Stress =", round(nmds_realms$stress, 3)),
+           hjust = 0, size = 5, fontface = "italic") +
+  theme_bw(base_size = 16, base_family = "sans") +
+  theme(legend.position = "right",
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16))
+nmds_realms_plot
+
+# Calcular centroides por reino
+nmds_realms_centroids <- nmds_points_realms %>%
+  group_by(group) %>%
+  summarise(NMDS1 = mean(NMDS1),
+            NMDS2 = mean(NMDS2))
+
+# Graficar solo los centroides
+nmds_realms_centroids_plot <- ggplot(nmds_realms_centroids, aes(x = NMDS1, y = NMDS2, colour = group)) +
+  geom_point(size = 15) +
+  scale_color_manual(values = manual_realm_colors) +
+  annotate("text", 
+           x = min(nmds_realms_centroids$NMDS1), 
+           y = min(nmds_realms_centroids$NMDS2), 
+           label = paste("Stress =", round(nmds_realms$stress, 3)),
+           hjust = 0, size = 7, fontface = "italic") +
+  labs(x = "NMDS 1", y = "NMDS 2", title = "        Realms") +
+  theme_bw(base_size = 16, base_family = "sans") +
+  theme(legend.position = "none",
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16))
+
+nmds_realms_centroids_plot
+
+## ============================================================
+## Step 7b: NMDS for Regions (11 groups)
+## ============================================================
+set.seed(123)
+# NMDS para regiones
+nmds_regions <- metaMDS(beta_sim_mean200, k = 2, trymax = 100,
+                       engine = "monoMDS", autotransform = FALSE)
+# Extraer coordenadas
+nmds_points_regions <- as.data.frame(nmds_regions$points)
+colnames(nmds_points_regions) <- c("NMDS1", "NMDS2")
+
+# Asignar grupos de región usando match para asegurar coincidencia de IDs
+nmds_points_regions$group <- factor(
+  shape200$region[match(row.names(nmds_points_regions), shape200$idcell)],
+  levels = names(colors200_region)  # niveles según tu paleta
+)
+
+# Graficar NMDS de regiones
+nmds_regions_plot <- ggplot(nmds_points_regions, aes(x = NMDS1, y = NMDS2, colour = group)) +
+  geom_point(size = 2, alpha = 0.6) +
+  scale_color_manual(values = colors200_region) +
+  labs(x = "NMDS 1", y = "NMDS 2", title = "NMDS - Regions") +
+  annotate("text", 
+           x = min(nmds_points_regions$NMDS1), 
+           y = min(nmds_points_regions$NMDS2), 
+           label = paste("Stress =", round(nmds_regions$stress, 3)),
+           hjust = 0, size = 5, fontface = "italic") +
+  theme_bw(base_size = 16, base_family = "sans") +
+  theme(legend.position = "right",
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16))
+
+nmds_regions_plot
+
+# Calcular centroides por región
+nmds_regions_centroids <- nmds_points_regions %>%
+  group_by(group) %>%
+  summarise(NMDS1 = mean(NMDS1),
+            NMDS2 = mean(NMDS2))
+
+# Graficar solo los centroides
+# Definir colores manualmente (mismos colores utilizados para el dendograma)
+colors_region <- c("#584B9FFF","#FCDE85FF","#584B9FFF","#A71B4BFF",
+                   "#ED820AFF","#FCDE85FF","#BAEEAEFF","#BAEEAEFF",
+                   "#00B1B5FF","#00B1B5FF")
+names(colors_region) <- sort(unique(nmds_regions_centroids$group))  # Asegurar correspondencia con niveles
+
+# Graficar solo los centroides con los colores manuales
+nmds_regions_centroids_plot <- ggplot(nmds_regions_centroids, aes(x = NMDS1, y = NMDS2, colour = group)) +
+  geom_point(size = 15) +
+  scale_color_manual(values = colors_region) +
+  annotate("text", 
+           x = min(nmds_regions_centroids$NMDS1), 
+           y = min(nmds_regions_centroids$NMDS2), 
+           label = paste("Stress =", round(nmds_regions$stress, 3)),
+           hjust = 0, size = 7, fontface = "italic") +
+  labs(x = "NMDS 1", y = "NMDS 2", title = "       Bioregions") +
+  theme_bw(base_size = 16, base_family = "sans") +
+  theme(legend.position = "none",
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16))
+
+nmds_regions_centroids_plot
+
+## ============================================================
+## Step 8: Combine Outputs into Single Figure
+## ============================================================
+
+bottom_row <- nmds_realms_centroids_plot + p1 +nmds_regions_centroids_plot +
+  plot_layout(widths = c(1, 1, 1))
+
+# Combinar: mapa arriba, tres gráficos abajo
+b <- contor / bottom_row +
+  plot_layout(heights = c(5, 4))
+
+b
+
+# Ajustar límites de p1 para que quepa la barra de β-sim
+y_min <- min(g$data$y)
+y_offset <- y_min - 2
+beta_sim_length <- 2
+
+p1 <- p1 +
+  geom_segment(
+    data = data.frame(x = 0, xend = beta_sim_length, y = y_offset, yend = y_offset),
+    aes(x = x, y = y, xend = xend, yend = yend),
+    inherit.aes = FALSE,
+    color = "black",
+    linewidth = 2
+  ) +
+  annotate(
+    "text",
+    x = beta_sim_length + 0.1,
+    y = y_offset,
+    label = paste0("β", beta_sim_length),
+    hjust = 0, vjust = 0.5,
+    size = 2
+  ) +
+  expand_limits(y = y_offset - 1)  # asegura que el área de dibujo incluya la barra
+
+bottom_row <- nmds_realms_centroids_plot + p1 + nmds_regions_centroids_plot +
+  plot_layout(widths = c(1, 1, 1))
+
+b <- contor / bottom_row +
+  plot_layout(heights = c(5, 4))
+
+b
+ggsave("results/Figures/phyloregions200km_all.png", b, dpi = 400, width = 15, height = 12)
 #####################################################################
 ### 3.- Validation
 # Regionalization using only well-sampled cells (200km resolution)

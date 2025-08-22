@@ -16,7 +16,7 @@ library(stringr)
 # ==============================================================================
 # 1.- GBIF database
 # ==============================================================================
-
+table(orchid_gbif$basisOfRecord)
 orchid_gbif <- fread("raw-data/gbif/0052485-241126133413365.csv") # 2,172,761 records
 
 # Exclude records at family and genus level, as the analyses are species-based.

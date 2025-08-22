@@ -25,9 +25,22 @@ prec_annual <- rast(paste0(chelsa_path, "CHELSA_bio12_1981-2010_V.2.1.tif"))
 temp_seasonality <- rast(paste0(chelsa_path, "CHELSA_bio4_1981-2010_V.2.1.tif"))
 prec_seasonality <- rast(paste0(chelsa_path, "CHELSA_bio15_1981-2010_V.2.1.tif"))
 elevation <- rast(paste0(chelsa_path, "elevation_1KMmn_GMTEDmn.tif"))
-LGM_temp <- rast(paste0(chelsa_path, "CHELSA_PMIP_CCSM4_BIO_01.tif"))
-LGM_prec <- rast(paste0(chelsa_path, "CHELSA_PMIP_CCSM4_BIO_12.tif"))
+# Review
+summary_temp_mean <- global(temp_mean, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_prec_annual <- global(prec_annual, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_temp_seasonality <- global(temp_seasonality, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_prec_seasonality <- global(prec_seasonality, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_elevation <- global(elevation, fun = c("min","max","mean","sd"), na.rm = TRUE)
 
+summary_temp_mean
+summary_prec_annual
+summary_temp_seasonality
+summary_prec_seasonality
+summary_elevation
+# Adjust temp_seasonality BEFORE projecting
+temp_seasonality <- temp_seasonality / 100  
+summary_temp_seasonality <- global(temp_seasonality, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_temp_seasonality
 # 2. Define projection (Behrmann equal-area) ---------------------------------
 behrmann_proj4 <- "+proj=cea +lon_0=0 +lat_ts=30 +datum=WGS84 +units=m +no_defs"
 
@@ -45,18 +58,103 @@ prec_annual_rescaled <- project_resample(prec_annual, behrmann_proj4)
 temp_seasonality_rescaled <- project_resample(temp_seasonality, behrmann_proj4)
 prec_seasonality_rescaled <- project_resample(prec_seasonality, behrmann_proj4)
 elevation_rescaled <- project_resample(elevation, behrmann_proj4)
-LGM_temp_rescaled <- project_resample(LGM_temp, behrmann_proj4)
-LGM_prec_rescaled <- project_resample(LGM_prec, behrmann_proj4)
 
 # 5. Check CRS match ----------------------------------------------------------
 all_same_crs <- all(
-  crs(temp_mean_rescaled) == crs(prec_annual_rescaled),
-  crs(temp_mean_rescaled) == crs(temp_seasonality_rescaled),
-  crs(temp_mean_rescaled) == crs(prec_seasonality_rescaled),
-  crs(temp_mean_rescaled) == crs(elevation_rescaled),
-  crs(temp_mean_rescaled) == crs(LGM_temp_rescaled),
-  crs(temp_mean_rescaled) == crs(LGM_prec_rescaled))
-print(all_same_crs)  # TRUE if all match
+  c(
+    crs(temp_mean_rescaled) == crs(prec_annual_rescaled),
+    crs(temp_mean_rescaled) == crs(temp_seasonality_rescaled),
+    crs(temp_mean_rescaled) == crs(prec_seasonality_rescaled),
+    crs(temp_mean_rescaled) == crs(elevation_rescaled)))
+all_same_crs  # TRUE if all CRSs match
+
+#review 
+# List of rescaled rasters
+rescaled_rasters <- list(
+  "Mean temperature °C"         = temp_mean_rescaled,
+  "Annual precipitation mm"     = prec_annual_rescaled,
+  "Temperature seasonality °C"  = temp_seasonality_rescaled,
+  "Precipitation seasonality mm"= prec_seasonality_rescaled,
+  "Elevation m"                 = elevation_rescaled)
+
+# Function to summarize raster
+summarize_raster <- function(r, name) {
+  s <- global(r, fun = c("min","max","mean","sd"), na.rm = TRUE)
+  cat("\n", name, "\n")
+  print(s)
+  invisible(s)
+}
+
+# Apply to all layers
+raster_summaries <- lapply(names(rescaled_rasters), function(nm) {
+  summarize_raster(rescaled_rasters[[nm]], nm)
+})
+
+# Split the layers to obtain real units
+temp_mean_rescaled <- (temp_mean_rescaled - 2731.5) / 10
+prec_annual_rescaled <- prec_annual_rescaled / 10
+prec_seasonality_rescaled <- prec_seasonality_rescaled / 10
+
+# Review again
+# ------------------------------------------------
+summary_temp_mean <- global(temp_mean_rescaled, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_prec_annual <- global(prec_annual_rescaled, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_temp_seasonality <- global(temp_seasonality_rescaled, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_prec_seasonality <- global(prec_seasonality_rescaled, fun = c("min","max","mean","sd"), na.rm = TRUE)
+summary_elevation <- global(elevation_rescaled, fun = c("min","max","mean","sd"), na.rm = TRUE)
+
+# see result
+summary_temp_mean
+summary_prec_annual
+summary_temp_seasonality
+summary_prec_seasonality
+summary_elevation
+
+# Prepare data frame for plotting
+# Convert all rasters to data frames
+raster_to_df <- function(raster_layer, var_name) {
+  df <- as.data.frame(raster_layer, xy = TRUE, na.rm = TRUE)
+  colnames(df) <- c("x", "y", "value")
+  df$variable <- var_name
+  return(df)
+}
+
+raster_list <- list(
+  "Mean temperature °C"        = temp_mean_rescaled,
+  "Annual precipitation mm"    = prec_annual_rescaled,
+  "Temperature seasonality °C" = temp_seasonality_rescaled,
+  "Precipitation seasonality mm" = prec_seasonality_rescaled,
+  "Elevation m"                = elevation_rescaled)
+
+raster_dfs <- purrr::map2(raster_list, names(raster_list), raster_to_df)
+combined_df <- do.call(rbind, raster_dfs)
+
+# Function for maps with ggplot
+plot_raster <- function(df, var_name) {
+  ggplot(df[df$variable == var_name, ]) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c(option = "C", direction = -1) +
+    coord_equal() +
+    theme_minimal(base_size = 14) +
+    labs(fill = var_name, x = "", y = "") 
+}
+
+# Crear todos los mapas
+map_plots <- purrr::map(names(raster_list), ~ plot_raster(combined_df, .x))
+
+# Combinar mapas en una sola figura
+combined_map <- patchwork::wrap_plots(map_plots, ncol = 2) + 
+  patchwork::plot_annotation(tag_levels = "a") & 
+  theme(plot.tag = element_text())
+combined_map
+
+# Guardar figura
+ggsave("results/Figures/all_variables_rasters.png", 
+       plot = combined_map,
+       dpi = 400, 
+       width = 15, 
+       height = 10)
+
 
 # 6. Load polygon grid and project to Behrmann -------------------------------
 shape200_vect <- vect("processed-data/community_matrix/pam_shape/grid_200km.gpkg")
@@ -68,16 +166,12 @@ cv_prec_vals <- terra::extract(prec_annual_rescaled, shape200_vect, fun = mean, 
 cv_temp_seas_vals <- terra::extract(temp_seasonality_rescaled, shape200_vect, fun = mean, na.rm = TRUE)
 cv_prec_seas_vals <- terra::extract(prec_seasonality_rescaled, shape200_vect, fun = mean, na.rm = TRUE)
 hetero_vals <- terra::extract(elevation_rescaled, shape200_vect, fun = mean, na.rm = TRUE)
-LGM_temp_vals <- terra::extract(LGM_temp_rescaled, shape200_vect, fun = mean, na.rm = TRUE)
-LGM_prec_vals <- terra::extract(LGM_prec_rescaled, shape200_vect, fun = mean, na.rm = TRUE)
 
 shape200_vect$temp_mean <- cv_temp_vals[, 2]
 shape200_vect$prec_annual <- cv_prec_vals[, 2]
 shape200_vect$temp_seasonality <- cv_temp_seas_vals[, 2]
 shape200_vect$precipitation_seasonality <- cv_prec_seas_vals[, 2]
 shape200_vect$heterogeneity_topo <- hetero_vals[, 2]
-shape200_vect$LGM_temp <- LGM_temp_vals[, 2]
-shape200_vect$LGM_prec <- LGM_prec_vals[, 2]
 
 # 9. Convert to sf ----------------------------------------
 shape200_sf <- st_as_sf(shape200_vect)
@@ -85,13 +179,11 @@ shape200_sf <- st_as_sf(shape200_vect)
 # 10. Prepare data frame for plotting ------------------------------------------
 climate_data <- shape200_sf %>%
   rename(
-    "Mean temperature" = temp_mean,
-    "Annual precipitation" = prec_annual,
-    "Temperature seasonality" = temp_seasonality,
-    "Precipitation seasonality" = precipitation_seasonality,
-    "Elevation" = heterogeneity_topo,
-    "LGM mean temperature" = LGM_temp,
-    "LGM annual precipitation" = LGM_prec)
+    "Mean temperature °C" = temp_mean,
+    "Annual precipitation mm" = prec_annual,
+    "Temperature seasonality °C" = temp_seasonality,
+    "Precipitation seasonality mm" = precipitation_seasonality,
+    "Elevation m" = heterogeneity_topo)
 
 # 11. Function for thematic maps -----------------------------------------------
 plot_map <- function(sf_data, variable) { 
@@ -103,20 +195,19 @@ plot_map <- function(sf_data, variable) {
 }
 
 # 12. Create all maps ---------------------------------------------------------
-map_vars <- c("Mean temperature", "Annual precipitation", "Temperature seasonality", 
-              "Precipitation seasonality", "Elevation", 
-              "LGM mean temperature", "LGM annual precipitation")
+map_vars <- c("Mean temperature °C", "Annual precipitation mm", "Temperature seasonality °C", 
+              "Precipitation seasonality mm", "Elevation m")
 
 map_plots <- purrr::map(map_vars, ~ plot_map(climate_data, .x))
 
 # 13. Combine all maps into one figure ---------------------------------------
-combined_map <- patchwork::wrap_plots(map_plots, ncol = 2) + 
+combined_map2 <- patchwork::wrap_plots(map_plots, ncol = 2) + 
   patchwork::plot_annotation(tag_levels = "a") & 
   theme(plot.tag = element_text())
-combined_map
+combined_map2
 # 14. Save combined figure ----------------------------------------------------
-ggsave("results/Figures/all_variables.png", 
-       plot = combined_map,
+ggsave("results/Figures/all_variables_final.png", 
+       plot = combined_map2,
        dpi = 400, 
        width = 15, 
        height = 10)
@@ -137,37 +228,36 @@ library(broom)
 # Projection (Behrmann example)
 shape200_sf <- st_transform(shape200_sf, crs = behrmann_proj4)
 
-# Hierarchical clustering for phyloregions
-load("processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_200.RData")
-hc200 <- hclust(beta_sim_mean200, method = "average")
-# 1. Get vector of groups with names
-groups_vector <- cutree(hc200, k = 6)
-groups_df <- data.frame(
-  idcell = names(groups_vector),
-  phyloregion = factor(groups_vector))
-
-# 2. Convert idcell in shape200_sf to character if not a character
-shape200_sf <- shape200_sf %>%
-  mutate(idcell = as.character(idcell))
-
-# 3. Join by idcell
+#Merge the kingdoms into the sf file to continue with the analysis
+#We already have an sf file with the kingdoms and bioregions. Let's load that sf file and do it
+shape200 <- st_read("results/SIG/bioregion200km_realms-bioregions.gpkg")
+# Asegurarse de que los ID coincidan como character
+shape200_sf <- shape200_sf %>% mutate(idcell = as.character(idcell))
+shape200 <- shape200 %>% mutate(idcell = as.character(idcell))
+# Seleccionar solo columnas necesarias de shape200
+groups_df <- shape200 %>% dplyr::select(idcell, realm)
+str(groups_df)
+groups_df <- groups_df %>%
+  st_set_geometry(NULL)  # elimina la columna geom
+# Unir phyloregion al shape200_sf base
 shape200_sf <- left_join(shape200_sf, groups_df, by = "idcell")
+# Validar que todas las celdas tengan grupo
+table(shape200_sf$realm, useNA = "ifany")
 
 # Phyloregions map (numeric codes)
 ggplot(shape200_sf) +
-  geom_sf(aes(fill = phyloregion), color = NA) +
-  geom_sf_text(aes(label = as.factor(phyloregion)), size = 2, color = "black") +
-  scale_fill_viridis_d(name = "Phyloregion (number)", option = "H") +
+  geom_sf(aes(fill = realm), color = NA) +
+  geom_sf_text(aes(label = realm), size = 2, color = "black") +
+  scale_fill_viridis_d(option = "H") +
   theme_minimal() +
   labs(title = "Phyloregions Map (numeric codes)")
 
 # --- 1. Load and prepare environmental data ---
 vars <- c("temp_mean", "prec_annual", "temp_seasonality",
-          "precipitation_seasonality", "heterogeneity_topo",
-          "LGM_temp", "LGM_prec")
+          "precipitation_seasonality", "heterogeneity_topo")
 
 env_data <- shape200_sf %>% 
-  dplyr::select(idcell, phyloregion, all_of(vars)) %>%
+  dplyr::select(idcell, realm, all_of(vars)) %>%
   filter(if_all(all_of(vars), ~ !is.na(.))) %>%
   mutate(across(all_of(vars), scale)) %>%
   mutate(idcell = as.character(idcell))  # Secure character type
@@ -182,12 +272,10 @@ pairs_df <- expand.grid(i = env_data$idcell, j = env_data$idcell, stringsAsFacto
     dist_climate_mean_raw = sqrt((temp_mean.i - temp_mean.j)^2 + (prec_annual.i - prec_annual.j)^2),
     dist_climate_var_raw  = sqrt((temp_seasonality.i - temp_seasonality.j)^2 + (precipitation_seasonality.i - precipitation_seasonality.j)^2),
     dist_topo_raw = sqrt((heterogeneity_topo.i - heterogeneity_topo.j)^2),
-    dist_LGM_raw          = sqrt((LGM_temp.i - LGM_temp.j)^2 + (LGM_prec.i - LGM_prec.j)^2),
     # Apply log1p and scale
     dist_climate_mean = scale(log1p(dist_climate_mean_raw)),
     dist_climate_var  = scale(log1p(dist_climate_var_raw)),
-    dist_topo         = scale(log1p(dist_topo_raw)),
-    dist_LGM          = scale(log1p(dist_LGM_raw)))
+    dist_topo         = scale(log1p(dist_topo_raw)))
 # --- 3. Add floristic dissimilarity ---
 # Convert beta_sim_mean200 in long format without coercion to integer
 beta_long <- as.data.frame(as.table(as.matrix(beta_sim_mean200)))
@@ -202,23 +290,26 @@ pairs_df <- inner_join(pairs_df, beta_long, by = c("i", "j"))
 
 # --- 4. Add phyloregions ---
 pairs_df <- pairs_df %>%
-  left_join(env_data %>% dplyr::select(idcell, phyloregion) %>% rename(phyloregion_i = phyloregion), by = c("i" = "idcell")) %>%
-  left_join(env_data %>% dplyr::select(idcell, phyloregion) %>% rename(phyloregion_j = phyloregion), by = c("j" = "idcell"))
+  left_join(env_data %>% dplyr::select(idcell, realm) %>% rename(phyloregion_i = realm),
+            by = c("i" = "idcell")) %>%
+  left_join(env_data %>% dplyr::select(idcell, realm) %>% rename(phyloregion_j = realm),
+            by = c("j" = "idcell"))
 
 # --- 5. Label phyloregions ---
 # See how many cells each group has and manually add group names
-table(shape200_sf$phyloregion)
+table(shape200_sf$realm)
 # Create manual correlation table after visual inspection
 correspondencia <- tibble::tibble(
-  phyloregion = factor(1:6),
-  region_name = c("Holartic","Indo-Malaysian","Australian",
-                  "Chile-Patagonian","Neotropical","Afrotropical"))
+  realm = factor(1:6),
+  region_name = c("Holartic","Australian","Chile-Patagonian",
+                  "Neotropical","Afrotropical","Indo-Malaysian"))
 # Assign names by join, not by factor directly
 pairs_df <- pairs_df %>%
-  left_join(correspondencia, by = c("phyloregion_i" = "phyloregion")) %>%
+  left_join(correspondencia, by = c("phyloregion_i" = "realm")) %>%
   rename(phyloregion_i_name = region_name) %>%
-  left_join(correspondencia, by = c("phyloregion_j" = "phyloregion")) %>%
+  left_join(correspondencia, by = c("phyloregion_j" = "realm")) %>%
   rename(phyloregion_j_name = region_name)
+
 # --- 6. Save
 save(pairs_df, file = "processed-data/drivers_bioregionalisation/pairs_df.RData")
 
@@ -260,7 +351,7 @@ context1_intraA <- pairs_df %>%
          phyloregion_j_name == "Australian")
 # 1. Correlation analysis
 cat("\n[1] Matriz de correlación:\n")
-cor_matrix_intraA1 <- cor(context1_intraA[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_intraA1 <- cor(context1_intraA[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_intraA1, 3))
 # Correlation display
 library(ggplot2)
@@ -301,7 +392,7 @@ context1_intraB <- pairs_df %>%
 
 # 1. Correlation analysis
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_intraB1 <- cor(context1_intraB[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_intraB1 <- cor(context1_intraB[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_intraB1, 3))
 
 # Correlation display
@@ -340,7 +431,7 @@ context1_inter <- pairs_df %>%
 
 # 1. Correlation analysis
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_inter1 <- cor(context1_inter[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_inter1 <- cor(context1_inter[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_inter1, 3))
 # Correlation display
 cor_melted <- melt(cor_matrix_inter1)
@@ -381,7 +472,7 @@ context2_intraA <- pairs_df %>%
 
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_intraA2 <- cor(context2_intraA[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_intraA2 <- cor(context2_intraA[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_intraA2, 3))
 
 # Correlation display
@@ -420,7 +511,7 @@ context2_intraB <- pairs_df %>%
 
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_intraB2 <- cor(context2_intraB[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_intraB2 <- cor(context2_intraB[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_intraB2, 3))
 
 # Correlation display
@@ -459,7 +550,7 @@ context2_inter <- pairs_df %>%
 
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_inter2 <- cor(context2_inter[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_inter2 <- cor(context2_inter[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_inter2, 3))
 
 # Correlation display
@@ -502,7 +593,7 @@ context3_intraA <- pairs_df %>%
 
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_intraA3 <- cor(context3_intraA[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_intraA3 <- cor(context3_intraA[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_intraA3, 3))
 
 # Correlation display
@@ -541,7 +632,7 @@ context3_intraB <- pairs_df %>%
 
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_intraB3 <- cor(context3_intraB[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_intraB3 <- cor(context3_intraB[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_intraB3, 3))
 
 # Correlation display
@@ -580,7 +671,7 @@ context3_inter <- pairs_df %>%
 
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_inter3 <- cor(context3_inter[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_inter3 <- cor(context3_inter[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_inter3, 3))
 
 # Correlation display
@@ -624,7 +715,7 @@ context4_intraA <- pairs_df %>%
 
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_intraA4 <- cor(context4_intraA[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_intraA4 <- cor(context4_intraA[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_intraA4, 3))
 
 # Correlation display
@@ -662,7 +753,7 @@ context4_intraB <- pairs_df %>%
          phyloregion_j_name == "Indo-Malaysian")
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_intraB4 <- cor(context4_intraB[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_intraB4 <- cor(context4_intraB[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_intraB4, 3))
 # Correlation display
 cor_melted <- melt(cor_matrix_intraB4)
@@ -698,7 +789,7 @@ context4_inter <- pairs_df %>%
            (phyloregion_j_name == "Holartic" & phyloregion_i_name == "Indo-Malaysian"))
 # 1. Correlation analisys
 cat("\n[1] Correlation matrix:\n")
-cor_matrix_inter4 <- cor(context4_inter[, c("dist_climate_mean", "dist_climate_var", "dist_topo", "dist_LGM")])
+cor_matrix_inter4 <- cor(context4_inter[, c("dist_climate_mean", "dist_climate_var", "dist_topo")])
 print(round(cor_matrix_inter4, 3))
 # Correlation display
 cor_melted <- melt(cor_matrix_inter4)
@@ -913,7 +1004,7 @@ levels(plot_data$Biogeo_Group) <- c(
 final_plot <- ggplot(plot_data, aes(x = Context_Type, y = R2_percent, fill = Variable)) +
   geom_col(position = "stack", width = 0.7) +
   geom_text(
-    aes(label = ifelse(R2_real > 0.5, paste0(round(R2_real, 1), "%"), "")),
+    aes(label = ifelse(R2_real > 0.5, round(R2_real, 1), "")),
     position = position_stack(vjust = 0.80),
     size = 4.5,
     color = "grey75") +
@@ -932,3 +1023,17 @@ final_plot
 # Save
 ggsave("results/Figures/Drivers.png", final_plot, 
        width = 25, height =18 , units = "cm", dpi = 400, bg = "white")
+
+## Finally, only the declaration of authors' contributions
+install.packages("CRediTas")
+library(CRediTas)
+
+cras_table <- template_create(authors = c("Derio Antonio Jiménez-López", "Glenda Mendieta-Leiva",
+                                          "Neptalí Ramírez-Marcial","Santiago Ramírez-Barahona",
+                                          "Alexander Zizka","Michael Kessler","Susana Maza-Villalobos",
+                                          "Maria Judith Carmona-Higuita","Borja Jiménez-Alfaro",
+                                          "André Luis de Gasper",roles = NULL))
+knitr::kable(cras_table)
+fix(cras_table)
+cras_write(cras_table, markdown = TRUE)
+

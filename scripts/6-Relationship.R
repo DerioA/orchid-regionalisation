@@ -7,14 +7,13 @@ rm(list = ls())  # Clear workspace
 # Load libraries:
 library(sf)          # For spatial data handling
 library(dplyr)       # For data manipulation
-library(circlize)    # For circular visualisations
 library(paletteer)   # For colour palettes
 library(ggplot2)     # For additional plotting
 library(ggpubr)      # For publication-ready graphics
-library(indicspecies)# For indicator species
 library(tidyr)
 library(Matrix)
 library(tibble)
+library(bioregion)
 
 # ==============================================================================
 # 1. Load spatial and community data for 200km hexagonal grid
@@ -30,313 +29,123 @@ load("processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_
 rm(beta_sne_mean200, beta_sor_mean200)
 
 # 2. Define cluster names
-regions <- c("Holarctic","Indo-Malaysian","Australian",
-             "Chile-Patagonian","Neotropical","Afrotropical")
-
-
-# 3. Cluster analysis
-hc200 <- stats::hclust(beta_sim_mean200, method = "average")
-clusters200 <- cutree(hc200, k = 6)
-# Assigning region names to groups
-shape200$cluster <- factor(clusters200, labels = regions)
-# Verify that comm200 has cells in the same order.
-comm200 <- as.matrix(comm200)
-# Ensure correspondence between cells and groups
-group_vector <- shape200$cluster[match(rownames(comm200), shape200$idcell)]
-
-# 4. Calculate unique and shared species
-species_by_region <- lapply(unique(clusters200), function(cluster) {
-  colnames(comm200)[colSums(comm200[clusters200 == cluster, , drop = FALSE]) > 0] %>%
-    unique()  # Remove duplicates
-  })
-names(species_by_region) <- regions
-
-# Unique species calculation
-unique_species <- lapply(regions, function(region) {
-  setdiff(species_by_region[[region]], 
-          unlist(species_by_region[names(species_by_region) != region]))
-})
-names(unique_species) <- regions
-
-# Shared species matrix
-shared_matrix <- matrix(0, nrow = 6, ncol = 6, dimnames = list(regions, regions))
-
-for (i in 1:6) {
-  for (j in 1:6) {
-    sp_i <- species_by_region[[i]]
-    sp_j <- species_by_region[[j]]
-    shared_matrix[i,j] <- length(intersect(sp_i, sp_j))
-  }}
-
-# 5. Visualisation settings
-region_colours <- c(
-  "Holarctic"="#ED820AFF",
-  "Indo-Malaysian" = "#FCDE85FF",
-  "Australian" = "#A71B4BFF",
-  "Chile-Patagonian"="#BAEEAEFF",  
-  "Neotropical"="#00B1B5FF",
-  "Afrotropical"="#584B9FFF")  # Corrected spelling
-
-# Generate chord diagram
-png("orchid-regionalisation/results/figures/shared_sp.png", width = 2500, height = 2500, res = 400)
-par(family = "sans")
-
-circos.par(
-  gap.after = c(rep(4, 5), 7),
-  start.degree = 5,
-  track.margin = c(0, 0))  # Remove label space
-colors200<-c("#ED820AFF","#FCDE85FF","#A71B4BFF",
-             "#BAEEAEFF","#00B1B5FF","#584B9FFF")
-chordDiagram(shared_matrix,
-             grid.col = colors200,
-             transparency = 0,
-             annotationTrack = NULL,  # Remove axes/labels
-             directional = 0,
-             link.sort = TRUE,
-             link.decreasing = TRUE,
-             link.lwd = 1,
-             link.border = "gray40")
-
-dev.off()
-
-# Reset graphical parameters
-circos.clear()
-while (!is.null(dev.list())) {
-  dev.off()
+# 1. Convertir disimilitud a formato bioregion
+# ======================================================
+convert_dist_to_bioregion <- function(dist_obj, metric_name = "Simpson", nb_species = NA) {
+  if (!inherits(dist_obj, "dist")) stop("Objeto debe ser de clase 'dist'.")
+  labels <- attr(dist_obj, "Labels")
+  mat <- as.matrix(dist_obj)
+  df <- data.frame(
+    Site1 = rep(labels, times = length(labels)),
+    Site2 = rep(labels, each = length(labels)),
+    value = as.vector(mat),
+    stringsAsFactors = FALSE
+  )
+  df <- df[df$Site1 < df$Site2, ]
+  colnames(df)[3] <- metric_name
+  class(df) <- c("bioregion.pairwise.metric", "data.frame")
+  attr(df, "type") <- "dissimilarity"
+  attr(df, "nb_sites") <- attr(dist_obj, "Size")
+  attr(df, "nb_species") <- nb_species
+  return(df)
 }
 
-# ==============================================================================
-#Bioregion Statistics
-# ==============================================================================
-# 1. Calculate species statistics ----
-# Total species per region
-total_species_counts <- sapply(species_by_region, length)
-# Unique species counts (from your previous calculation)
-unique_species_counts <- sapply(unique_species, length)
+dissim_br <- convert_dist_to_bioregion(beta_sim_mean200, metric_name = "Simpson")
 
-region_stats <- data.frame(
-  Region = regions,
-  Total_Species = total_species_counts,
-  Unique_Species = unique_species_counts,
-  stringsAsFactors = FALSE)
+# ======================================================
+# 2. Ajustar regionalizacion para obtener métricas
+# ======================================================
+tree4 <- hclu_hierarclust(dissim_br, n_clust = 2:100)
+eval_tree4 <- bioregionalization_metrics(tree4, dissimilarity = dissim_br, eval_metric = "pc_distance")
+realms.regions <- find_optimal_n(eval_tree4, metrics_to_use = "pc_distance", criterion = "cutoff", metric_cutoffs = c(.8,.85))
 
-# 2. Calculate spatial statistics
-# 1. Cell counting
-cell_counts <- shape200 %>%
-  st_drop_geometry() %>%
-  count(cluster) %>%
-  rename(Region = cluster, Hexagonal_Cells = n)
+optimal_realms <- realms.regions$optimal_nb_clusters$pc_distance[1]  # 6
+optimal_regions <- realms.regions$optimal_nb_clusters$pc_distance[2] # 18
 
-# 2. Calculating areas
-region_areas <- shape200 %>%
-  mutate(area_celda = as.numeric(sf::st_area(.)) / 1e6) %>% 
-  group_by(cluster) %>%  
-  summarise(Area_km2 = sum(area_celda)) %>% 
-  st_drop_geometry() %>%  
-  rename(Region = cluster)
-            
-# 3. Aggregate PD values ----
-load("processed-data/community_matrix/phylogenetic_metrics/PD_site_means_200.RData")
-            
-# Verify and merge data (corrected version)
-analysis_data <- shape200 %>%
-              st_drop_geometry() %>%
-              select(idcell, cluster) %>%
-              mutate(idcell = as.character(idcell)) %>%
-              left_join(
-                PD_summary200,
-                by = "idcell") %>%
-              rename(Region = cluster)
-            
-# 4. Calculate region-level statistics ----
-final_table <- region_stats %>% 
-              left_join(cell_counts, by = "Region") %>%
-              left_join(region_areas, by = "Region") %>%
-              # Add PD metrics from analysis_data
-              left_join(
-                analysis_data %>%
-                  group_by(Region) %>%
-                  summarise(
-                    Mean_Species_Richness = round(mean(Species_Richness), 1),
-                    Mean_PD = round(mean(PD_mean), 2),
-                    SD_PD = round(sd(PD_mean), 2),
-                    PD_Range = paste(
-                      round(min(PD_mean), 1),
-                      "-",
-                      round(max(PD_mean), 1))),
-                by = "Region") %>%
-              # Calculate derived metrics
-              mutate(
-                Species_Uniqueness = round(Unique_Species / Total_Species * 100, 1),
-                PD_CV = round(SD_PD / Mean_PD * 100, 1) ) %>%
-              select(
-                Region,
-                Hexagonal_Cells,
-                Area_km2,
-                Total_Species,
-                Unique_Species,
-                Species_Uniqueness,
-                Mean_Species_Richness,
-                Mean_PD,
-                SD_PD) %>%
-              arrange(desc(Total_Species))
-            
-# 5. Verification step ----
-# Check that total species matches sum of species richness
-species_consistency_check <- final_table %>%
-              mutate(
-                Calculated_Total = analysis_data %>%
-                  group_by(Region) %>%
-                  summarise(Sum_Richness = sum(Species_Richness)) %>%
-                  pull(Sum_Richness),
-                Check = Total_Species == Calculated_Total)
-            
-if(!all(species_consistency_check$Check)) {
-warning("Discrepancy between total species counts and sum of species richness values")
-print(species_consistency_check)
-}
-            
-# 6. Format and export ----
-colnames(final_table) <- c(
-              "Region",
-              "Hex cells",
-              "Area (km²)",
-              "Total species",
-              "Unique species",
-              "Uniqueness (%)",
-              "Mean sichness",
-              "Mean PD",
-              "± SD")
-write.csv(final_table,"results/table/bioregion_stats.csv", row.names = FALSE)
+clusters_realm200 <- tree4$clusters[[paste0("K_", optimal_realms)]]
+clusters_region200 <- tree4$clusters[[paste0("K_", optimal_regions)]]
 
-#############################################################################
-#############################################################################
-#Analysis of indicator species
-#############################################################################
-# 1. Preparación de datos -------------------------------------------------
-# Usar tus grupos existentes (k=6)
-rownames(comm200) <- shape200$idcell  # Ensure matrix and spatial data match
-hc200 <- stats::hclust(beta_sim_mean200, method = "average")
-clusters200 <- cutree(hc200, k = 6)
+# Asignar nombres de celdas
+names(clusters_realm200) <- rownames(tree4$clusters)
+names(clusters_region200) <- rownames(tree4$clusters)
 
-# 2. Pre-filtering of species:
-# Why consider pre-filtering?
-# Species with too few occurrences may generate spurious associations.
-# - Statistical analysis requires sufficient power (usually n ≥ 5)
-# - Reference literature:
-# - Dufrêne & Legendre (1997): Recommend excluding rare species
-# - De Cáceres et al. (2010): Suggest minimum thresholds for occurrence
-# Pre-filtered for dgCMatrix
-class(comm200)
-dim(comm200)
-occurrences <- Matrix::colSums(comm200 != 0)
-# Conteo de ocurrencias
-species_to_keep <- names(which(occurrences >= 5))
-comm200_filtrado <- comm200[, species_to_keep]
-# 3. Análisis de especies indicadoras
-set.seed(123)  # Para reproducibilidad
-# Versión robusta de IndVal
-indval_result <- multipatt(
-  x = as.matrix(comm200_filtrado),  # Convert the dense matrix
-  cluster = clusters200,
-  func = "IndVal.g",  # IIndVal for unequal groups
-  duleg = TRUE,       # Consider only species with maximum in one group only
-  control = how(nperm = 999))
+# Assigning realms names to groups
+# Crear un data.frame de asignación
+clusters_df <- data.frame(
+  idcell = names(clusters_realm200),
+  cluster_realm = as.numeric(clusters_realm200))
 
-# 3. Process ALL identified species
-all_species_df <- indval_result$sign %>%
-  as.data.frame() %>%
-  rownames_to_column("Species") %>%
-  mutate(
-    Group = colnames(indval_result$comb)[index],
-    # Calculate the difference between the maximum IndVal value and the second maximum
-    IndVal_diff = apply(indval_result$str, 1, function(x) {
-      sorted <- sort(x, decreasing = TRUE)
-      if(length(sorted) > 1) sorted[1] - sorted[2] else NA
-    })) %>%
-  select(Species, Group, Stat = stat, P_value = p.value, IndVal_diff)
+# Unir con shape200 usando idcell
+shape200 <- shape200 %>%
+  left_join(clusters_df, by = "idcell")
+#map
+ggplot(shape200) +
+  geom_sf(fill = NA, color = "grey40", size = 0.1) +  # solo los polígonos sin relleno
+  geom_sf_text(aes(label = cluster_realm), size = 3, color = "black") + # números de reino
+  theme_bw() +
+  labs(title = "Mapa de celdas con números de reinos") +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank())
 
-# 4. Calculate group distribution ----------------------------
-# Attendance/absence matrix by group
-group_presence <- t(apply(as.matrix(comm200_filtrado), 2, function(x) {
-  tapply(x > 0, clusters200, sum)
-}))
+# Definir los nombres en el mismo orden que los clusters (1 a 6)
+realms <- c("Holartic","Australian","Chile-Patagonian",
+            "Neotropical","Afrotropical","Indo-Malaysian")
 
-# Convert to percentage
-group_percentage <- t(apply(group_presence, 1, function(x) {
-  round(x / sum(x) * 100, 1)
-}))
+# Crear un factor con etiquetas
+shape200$realm_name <- factor(shape200$cluster_realm,
+                              levels = 1:6,
+                              labels = realms)
 
-# Rename columns
-colnames(group_percentage) <- paste0("Perc_Group_", colnames(group_percentage))
-colnames(group_presence) <- paste0("Count_Group_", colnames(group_presence))
+# Verificar
+table(shape200$realm_name)
 
-# 5. Combining all information
-REVIEW:
-  # - Consistency between assigned Group and highest Perc_Group_X
-  # - Species with Max_Percentage >80% as best candidates
-  # - Species with Max_Percentage <50% as potential false positives
-  left_join(
-    as.data.frame(group_presence) %>% 
-      tibble::rownames_to_column("Species"),
-    by = "Species") %>%
-  left_join(
-    as.data.frame(group_percentage) %>% 
-      tibble::rownames_to_column("Species"),
-    by = "Species") %>%
-  mutate(
-    Total_Occurrences = rowSums(group_presence[all_species_df$Species, ]),
-    Max_Percentage = apply(group_percentage[all_species_df$Species, ], 1, max)) %>%
-  arrange(Group, -Stat)
-write.csv(full_results, "results/table/all_indicator_species_full.csv", row.names = FALSE)
+#Metrics
+# Hierarchical bioregionalization
+set.seed(1)
+realms_orquis <- hclu_hierarclust(dissimilarity = dissim_br,
+                                          index = names(dissim_br)[3],
+                                          method = "average", n_clust = 6,
+                                          optimal_tree_method = "iterative_consensus_tree")
+realms_orquis$cluster_info
+# 1. Convertir dgCMatrix a matrix numérica
+comm200_mat <- as.matrix(comm200)  # sigue siendo numérica
+# 2. Crear dataframe solo si quieres una columna explícita 'Site'
+comm_df <- data.frame(
+  Site = rownames(comm200_mat),
+  comm200_mat,
+  check.names = FALSE)
+# 3. Convertir de nuevo a matrix numérica
+# Seleccionamos solo las columnas de abundancia/presencia (sin 'Site')
+comm200_numeric <- as.matrix(comm_df[, -1])
+# Asignamos los nombres de fila según la columna 'Site'
+rownames(comm200_numeric) <- comm_df$Site
+# 4. Verificar
+str(comm200_numeric)
 
-# subsets
-# Define thresholds
-p_threshold <- 0.05
-stat_threshold <- 0.3
-concentration_threshold <- 80
-indval_diff_threshold <- 0.1
-
-# Selecting the best indicator species
-best_indicators <- full_results %>%
-  filter(
-    P_value < p_threshold,
-    Stat > stat_threshold,
-    Max_Percentage > concentration_threshold,
-    IndVal_diff > indval_diff_threshold) %>%
-  arrange(Group, -Stat) %>%
-  select(Species, Group, Stat, P_value, Max_Percentage, IndVal_diff)
-
-# Exporting results
-write.csv(best_indicators, "results/table/best_indicator_species.csv", row.names = FALSE)
-
-# Optional: Top 5 per group
-top5_per_group <- best_indicators %>%
-  group_by(Group) %>%
-  slice_max(order_by = Stat, n = 5) %>%
-  ungroup()
-
-write.csv(top5_per_group, "results/table/top5_indicators_per_group.csv", row.names = FALSE)# 7. Crear resumen por grupo -------------------------------------
-# REVIEW:
-# - Groups with mean_Percentage <60% contain poorly constrained species
-# - Groups with n_species <10 may be biogeographically insignificant
-group_summary <- full_results %>%
-  group_by(Group) %>%
-  summarise(
-    n_species = n(),
-    mean_Stat = mean(Stat, na.rm = TRUE),
-    mean_Percentage = mean(Max_Percentage, na.rm = TRUE),
-    .groups = "drop")
-write.csv(group_summary, "results/table/indicator_species_group_summary.csv", row.names = FALSE)
+# Ahora sí podemos correr las métricas
+# Revisar coincidencia de nombres de filas
+all(names(realms_orquis) %in% rownames(comm200_numeric))
+# Revisar si hay nombres faltantes
+setdiff(names(realms_orquis), rownames(comm200_numeric))
+#Obtener metricas
+summary <- bioregion_metrics(
+  bioregionalization = realms_orquis,
+  comat = comm200_numeric)
+summary
+write.csv(summary,"results/table/bioregion_metrics.csv", row.names = FALSE)
+contrib_orquis <- site_species_metrics(realms_orquis, comm200_numeric,
+                  indices = c("rho", "affinity", "fidelity", "indicator_value"))
+contrib_orquis
+write.csv(contrib_orquis,"results/table/contribution_species.csv", row.names = FALSE)
 
 ##################################################################
 # Cell Affiliation Analysis Across Bioregions
 ##################################################################
-rm(list = ls())  # Clear workspace
 
 library(sf)            # Spatial data handling
 library(dplyr)         # Data manipulation
-library(circlize)      # Circular visualisations
 library(paletteer)     # Colour palettes
 library(ggplot2)       # Data visualisation
 library(ggpubr)        # Publication-ready graphics
@@ -364,9 +173,7 @@ load("processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_
 rm(beta_sne_mean200, beta_sor_mean200)
 
 # 2. Cluster analysis and affiliation -----------------------------------------
-hc200 <- stats::hclust(beta_sim_mean200, method = "average")
-clusters200 <- cutree(hc200, k = 6)
-groups_factor <- factor(clusters200)
+groups_factor <- factor(clusters_realm200) #Obtenido anteriormente para obtener las metricas
 
 # Calculate cell-region affiliation
 afi <- Herodotools::calc_affiliation_evoreg(beta_sim_mean200, groups_factor)
@@ -392,12 +199,13 @@ shape200_affiliation <- st_transform(shape200_affiliation, behrmann)
 # 5. Define colour scheme -----------------------------------------------------
 # to make sure that the colours are assigned to exactly the right group,
 #we generate the same dendrogram as in step 5.
-hc200 <- stats::hclust(beta_sim_mean200, method = "average")
-clusters200 <- cutree(hc200, k = 6)
-colors200 <- as.character(paletteer_c("grDevices::Spectral", 6))
+best.hclust <- tree4$algorithm$final.tree
+best.hclust$labels <- names(clusters_region200)
+dend200 <- as.dendrogram(best.hclust)
 
+# Paleta fija para 6 realms
+colors200 <- as.character(paletteer_c("grDevices::Spectral", 6))
 # Colouring dendrogram
-dend200 <- as.dendrogram(hc200)
 dend200 <- color_branches(dend200, k = 6, col = colors200)
 
 # Extract order, labels and true colours
