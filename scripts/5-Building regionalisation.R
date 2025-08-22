@@ -1111,7 +1111,7 @@ rm(beta_sne_mean200, beta_sor_mean200)
 
 # Convert dissimilarity to bioregion format
 convert_dist_to_bioregion <- function(dist_obj, metric_name = "Simpson", nb_species = NA) {
-  if (!inherits(dist_obj, "dist")) stop("Objeto debe ser de clase 'dist'.")
+  if (!inherits(dist_obj, "dist")) stop("Object must be of class 'dist'.")
   labels <- attr(dist_obj, "Labels")
   mat <- as.matrix(dist_obj)
   df <- data.frame(
@@ -1173,15 +1173,15 @@ for (reg in small_regions) {
 clusters_region200 <- shape200$region
 names(clusters_region200) <- shape200$idcell
 table(clusters_region200)
+
 # Graphing to define colours
 # Ensure that shape200_sf has the assigned clusters
 
 # Map with cluster numbers
 ggplot(shape200) +
-  geom_sf(fill = "lightblue", color = "grey50", size = 0.1) +  # celdas rellenas
-  geom_sf_text(aes(label = region), size = 2, color = "black") + # números sobre celdas
-  theme_minimal() +
-  ggtitle("Mapa de regiones filogenéticas (número de cluster)")
+  geom_sf(fill = "lightblue", color = "grey50", size = 0.1) +  # filled cells
+  geom_sf_text(aes(label = region), size = 2, color = "black") + # numbers on cells
+  theme_minimal()
 
 # Prepare dendrogram of regions and colours
 best.hclust <- tree.orchids$algorithm$final.tree
@@ -1301,7 +1301,7 @@ names(colors200_region) <- sort(unique(shape200$region))
 shape200$color_realm  <- colors200_realms[shape200$realm]
 shape200$color_region <- colors200_region[shape200$region]
 
-# Graficar mapas
+# Plotting maps
 # Map of regions
 ggplot(shape200) +
   geom_sf(aes(fill = color_region)) +
@@ -1316,7 +1316,7 @@ ggplot(shape200) +
   theme_bw() +
   labs(title = "Mapa de 6 reinos biogeográficos")
 
-# Guardar shapefile final
+# Save
 st_write(shape200, "results/SIG/bioregion200km_realms-bioregions.gpkg")
 
 ##Now, graph
@@ -1508,17 +1508,16 @@ set.seed(123)
 # NMDS para regiones
 nmds_regions <- metaMDS(beta_sim_mean200, k = 2, trymax = 100,
                        engine = "monoMDS", autotransform = FALSE)
-# Extraer coordenadas
+# Eextract coordinates
 nmds_points_regions <- as.data.frame(nmds_regions$points)
 colnames(nmds_points_regions) <- c("NMDS1", "NMDS2")
 
-# Asignar grupos de región usando match para asegurar coincidencia de IDs
+# Assign region groups using match to ensure ID matching
 nmds_points_regions$group <- factor(
   shape200$region[match(row.names(nmds_points_regions), shape200$idcell)],
-  levels = names(colors200_region)  # niveles según tu paleta
-)
+  levels = names(colors200_region))  # niveles según tu paleta
 
-# Graficar NMDS de regiones
+# Plot NMDS of regions
 nmds_regions_plot <- ggplot(nmds_points_regions, aes(x = NMDS1, y = NMDS2, colour = group)) +
   geom_point(size = 2, alpha = 0.6) +
   scale_color_manual(values = colors200_region) +
@@ -1535,20 +1534,20 @@ nmds_regions_plot <- ggplot(nmds_points_regions, aes(x = NMDS1, y = NMDS2, colou
 
 nmds_regions_plot
 
-# Calcular centroides por región
+# Ccalculate centroids by region
 nmds_regions_centroids <- nmds_points_regions %>%
   group_by(group) %>%
   summarise(NMDS1 = mean(NMDS1),
             NMDS2 = mean(NMDS2))
 
-# Graficar solo los centroides
-# Definir colores manualmente (mismos colores utilizados para el dendograma)
+# Plot only the centroids
+# Define colours manually (same colours used for the dendrogram)
 colors_region <- c("#584B9FFF","#FCDE85FF","#584B9FFF","#A71B4BFF",
                    "#ED820AFF","#FCDE85FF","#BAEEAEFF","#BAEEAEFF",
                    "#00B1B5FF","#00B1B5FF")
-names(colors_region) <- sort(unique(nmds_regions_centroids$group))  # Asegurar correspondencia con niveles
+names(colors_region) <- sort(unique(nmds_regions_centroids$group))  # Ensure correspondence with levels
 
-# Graficar solo los centroides con los colores manuales
+# Plot only the centroids with manual colours
 nmds_regions_centroids_plot <- ggplot(nmds_regions_centroids, aes(x = NMDS1, y = NMDS2, colour = group)) +
   geom_point(size = 15) +
   scale_color_manual(values = colors_region) +
@@ -1572,13 +1571,13 @@ nmds_regions_centroids_plot
 bottom_row <- nmds_realms_centroids_plot + p1 +nmds_regions_centroids_plot +
   plot_layout(widths = c(1, 1, 1))
 
-# Combinar: mapa arriba, tres gráficos abajo
+# Combine: map above, three graphs below
 b <- contor / bottom_row +
   plot_layout(heights = c(5, 4))
 
 b
 
-# Ajustar límites de p1 para que quepa la barra de β-sim
+# Adjust p1 limits to fit the β-sim bar
 y_min <- min(g$data$y)
 y_offset <- y_min - 2
 beta_sim_length <- 2
@@ -1589,17 +1588,15 @@ p1 <- p1 +
     aes(x = x, y = y, xend = xend, yend = yend),
     inherit.aes = FALSE,
     color = "black",
-    linewidth = 2
-  ) +
+    linewidth = 2) +
   annotate(
     "text",
     x = beta_sim_length + 0.1,
     y = y_offset,
     label = paste0("β", beta_sim_length),
     hjust = 0, vjust = 0.5,
-    size = 2
-  ) +
-  expand_limits(y = y_offset - 1)  # asegura que el área de dibujo incluya la barra
+    size = 2) +
+  expand_limits(y = y_offset - 1)  # Ensure that the drawing area includes the bar.
 
 bottom_row <- nmds_realms_centroids_plot + p1 + nmds_regions_centroids_plot +
   plot_layout(widths = c(1, 1, 1))
@@ -1610,6 +1607,7 @@ b <- contor / bottom_row +
 b
 ggsave("results/Figures/phyloregions200km_all.png", b, dpi = 400, width = 15, height = 12)
 #####################################################################
+
 ### 3.- Validation
 # Regionalization using only well-sampled cells (200km resolution)
 #####################################################################

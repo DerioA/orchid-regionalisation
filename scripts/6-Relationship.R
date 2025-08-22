@@ -17,10 +17,8 @@ library(bioregion)
 
 # ==============================================================================
 # 1. Load spatial and community data for 200km hexagonal grid
-# 2. Define six biogeographical regions based on phylogenetic beta diversity
-# 3. Calculate unique and shared orchid species between regions
-# 4. Visualise species sharing patterns using chord diagrams
-# 5. Use spectral colour scheme matching regional biogeographical affinities
+# 2. Define six biogeographical realms based on phylogenetic beta diversity
+# 3. Calculate unique orchid species between regions
 # ==============================================================================
 # 1. Load data
 shape200 <- st_read("processed-data/community_matrix/pam_shape/grid_200km.gpkg")
@@ -28,9 +26,10 @@ comm200 <- readRDS("processed-data/community_matrix/pam/pam_200km.rds")
 load("processed-data/community_matrix/phylogenetic_metrics/mean_beta_components_200.RData")
 rm(beta_sne_mean200, beta_sor_mean200)
 
-# 2. Define cluster names
-# 1. Convertir disimilitud a formato bioregion
+# Define cluster names
+# Convert dissimilarity to bioregion format
 # ======================================================
+#This is the same as in step 5 (building regionalisation) for creating realms.
 convert_dist_to_bioregion <- function(dist_obj, metric_name = "Simpson", nb_species = NA) {
   if (!inherits(dist_obj, "dist")) stop("Objeto debe ser de clase 'dist'.")
   labels <- attr(dist_obj, "Labels")
@@ -53,7 +52,7 @@ convert_dist_to_bioregion <- function(dist_obj, metric_name = "Simpson", nb_spec
 dissim_br <- convert_dist_to_bioregion(beta_sim_mean200, metric_name = "Simpson")
 
 # ======================================================
-# 2. Ajustar regionalizacion para obtener métricas
+# Adjust regionalisation to obtain metrics
 # ======================================================
 tree4 <- hclu_hierarclust(dissim_br, n_clust = 2:100)
 eval_tree4 <- bioregionalization_metrics(tree4, dissimilarity = dissim_br, eval_metric = "pc_distance")
@@ -65,23 +64,23 @@ optimal_regions <- realms.regions$optimal_nb_clusters$pc_distance[2] # 18
 clusters_realm200 <- tree4$clusters[[paste0("K_", optimal_realms)]]
 clusters_region200 <- tree4$clusters[[paste0("K_", optimal_regions)]]
 
-# Asignar nombres de celdas
+# Assign cell names
 names(clusters_realm200) <- rownames(tree4$clusters)
 names(clusters_region200) <- rownames(tree4$clusters)
 
 # Assigning realms names to groups
-# Crear un data.frame de asignación
+# Create an allocation data frame
 clusters_df <- data.frame(
   idcell = names(clusters_realm200),
   cluster_realm = as.numeric(clusters_realm200))
 
-# Unir con shape200 usando idcell
+# Join with shape200 using idcell
 shape200 <- shape200 %>%
   left_join(clusters_df, by = "idcell")
 #map
 ggplot(shape200) +
-  geom_sf(fill = NA, color = "grey40", size = 0.1) +  # solo los polígonos sin relleno
-  geom_sf_text(aes(label = cluster_realm), size = 3, color = "black") + # números de reino
+  geom_sf(fill = NA, color = "grey40", size = 0.1) + 
+  geom_sf_text(aes(label = cluster_realm), size = 3, color = "black") +
   theme_bw() +
   labs(title = "Mapa de celdas con números de reinos") +
   theme(
@@ -89,56 +88,67 @@ ggplot(shape200) +
     axis.ticks = element_blank(),
     panel.grid = element_blank())
 
-# Definir los nombres en el mismo orden que los clusters (1 a 6)
+# Define the names in the same order as the clusters (1 to 6)
 realms <- c("Holartic","Australian","Chile-Patagonian",
             "Neotropical","Afrotropical","Indo-Malaysian")
 
-# Crear un factor con etiquetas
+# Create a factor with labels
 shape200$realm_name <- factor(shape200$cluster_realm,
                               levels = 1:6,
                               labels = realms)
 
-# Verificar
+# Verify
 table(shape200$realm_name)
 
 #Metrics
-# Hierarchical bioregionalization
+# Hierarchical bioregionalisation
 set.seed(1)
 realms_orquis <- hclu_hierarclust(dissimilarity = dissim_br,
                                           index = names(dissim_br)[3],
                                           method = "average", n_clust = 6,
                                           optimal_tree_method = "iterative_consensus_tree")
 realms_orquis$cluster_info
-# 1. Convertir dgCMatrix a matrix numérica
-comm200_mat <- as.matrix(comm200)  # sigue siendo numérica
-# 2. Crear dataframe solo si quieres una columna explícita 'Site'
+# Convert dgCMatrix to numerical matrix
+comm200_mat <- as.matrix(comm200)
+# Create a dataframe with an explicit “Site” column.
 comm_df <- data.frame(
   Site = rownames(comm200_mat),
   comm200_mat,
   check.names = FALSE)
-# 3. Convertir de nuevo a matrix numérica
-# Seleccionamos solo las columnas de abundancia/presencia (sin 'Site')
+# Convert back to numerical matrix
 comm200_numeric <- as.matrix(comm_df[, -1])
-# Asignamos los nombres de fila según la columna 'Site'
+# We assign row names based on the “Site” column.
 rownames(comm200_numeric) <- comm_df$Site
-# 4. Verificar
+# 4. Verify
 str(comm200_numeric)
 
-# Ahora sí podemos correr las métricas
-# Revisar coincidencia de nombres de filas
+# Check row name matches
 all(names(realms_orquis) %in% rownames(comm200_numeric))
-# Revisar si hay nombres faltantes
+# Check for missing names
 setdiff(names(realms_orquis), rownames(comm200_numeric))
-#Obtener metricas
+# Obtain metrics
 summary <- bioregion_metrics(
   bioregionalization = realms_orquis,
   comat = comm200_numeric)
 summary
 write.csv(summary,"results/table/bioregion_metrics.csv", row.names = FALSE)
 contrib_orquis <- site_species_metrics(realms_orquis, comm200_numeric,
-                  indices = c("rho", "affinity", "fidelity", "indicator_value"))
+                  indices = c("affinity", "fidelity", "indicator_value"))
 contrib_orquis
+str(contrib_orquis)
 write.csv(contrib_orquis,"results/table/contribution_species.csv", row.names = FALSE)
+
+#Count how many indicator species there are in each bioregion.
+# Filter only indicator species (indval > 0 and not NA)
+indicadoras <- contrib_orquis %>%
+  filter(!is.na(indval), indval > 0)
+# Contar número de especies únicas por bioregion
+conteo_indicadoras <- indicadoras %>%
+  group_by(Bioregion) %>%
+  summarise(n_species_indicadoras = n_distinct(Species)) %>%
+  arrange(Bioregion)
+
+conteo_indicadoras
 
 ##################################################################
 # Cell Affiliation Analysis Across Bioregions
