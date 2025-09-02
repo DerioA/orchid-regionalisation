@@ -1141,7 +1141,7 @@ clusters.evaluation<-eval_tree4$evaluation_df
 write_csv(clusters.evaluation, file = "results/table/cluesters.evaluation.csv")
 realms.regions <- find_optimal_n(eval_tree4, metrics_to_use = "pc_distance", criterion = "cutoff", metric_cutoffs = c(.8,.85))
 optimal_realms <- realms.regions$optimal_nb_clusters$pc_distance[1]  # 6
-optimal_regions <- realms.regions$optimal_nb_clusters$pc_distance[2] # 15
+optimal_regions <- realms.regions$optimal_nb_clusters$pc_distance[2] # 16
 
 clusters_realm200 <- tree.orchids$clusters[[paste0("K_", optimal_realms)]]
 clusters_region200 <- tree.orchids$clusters[[paste0("K_", optimal_regions)]]
@@ -1225,7 +1225,7 @@ colors_region <- c("#584B9FFF","#FCDE85FF","#584B9FFF","#A71B4BFF",
 names(colors_region) <- final_clusters
 
 # Collapse leaves: keep n_keep leaves per cluster
-n_keep <- 4
+n_keep <- 3
 keep_leaves <- unlist(lapply(final_clusters, function(cl){
   leaves <- names(clusters_region200[clusters_region200 == cl])
   head(leaves, n_keep)
@@ -1239,7 +1239,7 @@ leaf_clusters <- factor(clusters_region200[phylo_partial$tip.label],
                         levels = final_clusters)
 
 # Crear ggtree phylogenetic
-g <- ggtree(phylo_partial, layout = "equal_angle",branch.length = 'none', size = 1.5)
+g <- ggtree::ggtree(phylo_partial, layout = "equal_angle",branch.length = 'none', size = 1.5)
 
 # Optimised cluster propagation
 cluster_vec <- rep(NA, nrow(g$data))
@@ -1278,7 +1278,7 @@ p1 <- g +
   # Coloured circles on the tips
   geom_point(data = g$data[g$data$isTip, ],
              aes(x = x, y = y, color = cluster),
-             size = 3, show.legend = FALSE) +
+             size = 4, show.legend = FALSE) +
   scale_color_manual(values = colors_region, na.value = "grey50") +
   theme_bw() +
   theme(
@@ -1316,9 +1316,6 @@ ggplot(shape200) +
   theme_bw() +
   labs(title = "Mapa de 6 reinos biogeográficos")
 
-# Save
-st_write(shape200, "results/SIG/bioregion200km_realms-bioregions.gpkg")
-
 ##Now, graph
 # Ensure that 'realm' is a character so that the numbers are displayed correctly.
 shape200$realm <- as.character(shape200$realm)
@@ -1344,6 +1341,8 @@ cluster_to_realm <- c(
 # Assign kingdom names to each cell
 shape200$realm_name <- cluster_to_realm[as.character(shape200$realm)]
 
+# Save
+st_write(shape200, "results/SIG/bioregion200km_realms-phyloregions.gpkg")
 # 3. Create a manual colour vector in the order you want
 manual_realm_colors <- c(
   "Australian"       = "#A71B4BFF",
@@ -1391,7 +1390,7 @@ ggplot() +
 
 # Select only the desired regions and merge geometries by region
 regions_union <- bioregion200 %>%
-  filter(region %in% c("1", "14", "6", "8")) %>%
+  filter(region %in% c("1", "15", "6", "8")) %>%
   group_by(region) %>%
   summarise(geometry = st_union(geom), .groups = "drop") %>%
   st_as_sf() %>%
@@ -1413,7 +1412,7 @@ contor <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion200, aes(fill = color_realm), colour = NA, size = 0) +
   # Draw thick lines of the regions
-  geom_sf(data = lines_union, colour = "black", size = 30, linetype = "solid") +
+  geom_sf(data = lines_union, colour = "black", size = 50, linetype = "solid") +
   scale_fill_identity(
     name = NULL,
     breaks = colors.200,
@@ -1484,16 +1483,11 @@ nmds_realms_centroids <- nmds_points_realms %>%
   summarise(NMDS1 = mean(NMDS1),
             NMDS2 = mean(NMDS2))
 
-# Graficar solo los centroides
+# Plot only the centroids
 nmds_realms_centroids_plot <- ggplot(nmds_realms_centroids, aes(x = NMDS1, y = NMDS2, colour = group)) +
-  geom_point(size = 15) +
+  geom_point(size = 17) +
   scale_color_manual(values = manual_realm_colors) +
-  annotate("text", 
-           x = min(nmds_realms_centroids$NMDS1), 
-           y = min(nmds_realms_centroids$NMDS2), 
-           label = paste("Stress =", round(nmds_realms$stress, 3)),
-           hjust = 0, size = 7, fontface = "italic") +
-  labs(x = "NMDS 1", y = "NMDS 2", title = "        Realms") +
+  labs(x = "NMDS 1", y = "NMDS 2", title = "") +
   theme_bw(base_size = 16, base_family = "sans") +
   theme(legend.position = "none",
         axis.title = element_text(size = 16),
@@ -1549,14 +1543,9 @@ names(colors_region) <- sort(unique(nmds_regions_centroids$group))  # Ensure cor
 
 # Plot only the centroids with manual colours
 nmds_regions_centroids_plot <- ggplot(nmds_regions_centroids, aes(x = NMDS1, y = NMDS2, colour = group)) +
-  geom_point(size = 15) +
+  geom_point(size = 17) +
   scale_color_manual(values = colors_region) +
-  annotate("text", 
-           x = min(nmds_regions_centroids$NMDS1), 
-           y = min(nmds_regions_centroids$NMDS2), 
-           label = paste("Stress =", round(nmds_regions$stress, 3)),
-           hjust = 0, size = 7, fontface = "italic") +
-  labs(x = "NMDS 1", y = "NMDS 2", title = "       Bioregions") +
+  labs(x = "NMDS 1", y = "NMDS 2", title = "") +
   theme_bw(base_size = 16, base_family = "sans") +
   theme(legend.position = "none",
         axis.title = element_text(size = 16),
@@ -1564,6 +1553,35 @@ nmds_regions_centroids_plot <- ggplot(nmds_regions_centroids, aes(x = NMDS1, y =
 
 nmds_regions_centroids_plot
 
+#Final mnds
+# Calculate common limits for both NMDS
+xlim_common <- range(c(nmds_points_realms$NMDS1, nmds_points_regions$NMDS1))
+ylim_common <- range(c(nmds_points_realms$NMDS2, nmds_points_regions$NMDS2))
+
+# Apply to plots
+#Reamls
+y_fixed <- min(nmds_points_realms$NMDS2)
+nmds_realms_centroids_plot <- nmds_realms_centroids_plot +
+  coord_cartesian(xlim = xlim_common, ylim = ylim_common) +
+  annotate("text",
+           x = xlim_common[1],
+           y = y_fixed,
+           label = paste("Stress =", round(nmds_realms$stress, 3)),
+           hjust = 0, vjust = 0,
+           size = 7, fontface = "italic")
+nmds_realms_centroids_plot
+#Phyloregions
+y_fixed2 <- min(nmds_points_regions$NMDS2)
+nmds_regions_centroids_plot <- nmds_regions_centroids_plot +
+  coord_cartesian(xlim = xlim_common, ylim = ylim_common) +
+  annotate("text",
+           x = xlim_common[1],
+           y = y_fixed,
+           label = paste("Stress =", round(nmds_realms$stress, 3)),
+           hjust = 0, vjust = 0,
+           size = 7, fontface = "italic")
+  
+nmds_regions_centroids_plot
 ## ============================================================
 ## Step 8: Combine Outputs into Single Figure
 ## ============================================================
