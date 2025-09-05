@@ -342,7 +342,7 @@ shapiro.test(sample(pairs_df$beta_sim, 5000))
 #################################################################
 # --- 7. Fit models by context ---
 # Contexto 1: Australian vs Others
-# ================================================================
+# ===============================================================
 
 # Intra A (Australian)
 cat("\n--- Intra A (Australian) ---\n")
@@ -878,7 +878,7 @@ get_coef_df <- function(model, context_name) {
   tidy_df$Context <- context_name
   tidy_df$Variable <- dplyr::case_when(
     tidy_df$term == "dist_climate_mean" ~ "Average climate",
-    tidy_df$term == "dist_climate_var"  ~ "Climate variation",
+    tidy_df$term == "dist_climate_var"  ~ "Climate variability",
     tidy_df$term == "dist_topo"         ~ "Topographical heterogeneity",
     tidy_df$term == "(Intercept)"       ~ "Intercept",
     TRUE ~ tidy_df$term)
@@ -929,7 +929,7 @@ relimp_results <- bind_rows(
 relimp_results <- relimp_results %>%
   mutate(Variable = dplyr::case_when(
     Variable == "dist_climate_mean" ~ "Average climate",
-    Variable == "dist_climate_var"  ~ "Climate variation",
+    Variable == "dist_climate_var"  ~ "Climate variability",
     Variable == "dist_topo"         ~ "Topographical heterogeneity",
     TRUE ~ Variable))
 
@@ -965,7 +965,7 @@ context_labels <- tibble::tibble(
 
 # Add row index to original table
 tabla_combinada <- tabla_combinada %>%
-  filter(Variable %in% c("Average climate", "Climate variation", "Topographical heterogeneity")) %>%
+  filter(Variable %in% c("Average climate", "Climate variability", "Topographical heterogeneity")) %>%
   mutate(row_id = row_number())
 
 # Join by position
@@ -975,7 +975,7 @@ plot_data <- tabla_combinada %>%
   dplyr::mutate(
     Biogeo_Group = factor(Biogeo_Group, levels = c("Australia", "Chile-Patagonia", "Neotropical", "Holarctic")),
     Context_Type = factor(Context_Type, levels = c("IntraA", "IntraB", "Inter")),
-    Variable = factor(Variable, levels = c("Average climate", "Climate variation", "Topographical heterogeneity")),
+    Variable = factor(Variable, levels = c("Average climate", "Climate variability", "Topographical heterogeneity")),
     R2_real = R2_percent  ) %>%  # <<--- Here you store the actual values
   dplyr::group_by(Biogeo_Group, Context_Type) %>%
   dplyr::mutate(
@@ -1006,18 +1006,23 @@ final_plot <- ggplot(plot_data, aes(x = Context_Type, y = R2_percent, fill = Var
   geom_text(
     aes(label = ifelse(R2_real > 0.5, round(R2_real, 1), "")),
     position = position_stack(vjust = 0.80),
-    size = 4.5,
-    color = "grey75") +
+    size = 5,
+    color = "grey20") +
   facet_wrap(~ Biogeo_Group, ncol = 2) +
   scale_fill_manual(
     values = c(
-      "Average climate" = "#440154",
-      "Climate variation" = "#3B528B",
-      "Topographical heterogeneity" = "#21908C"),
-    name = "") +
+      "Average climate" = "#4C72B0",  # azul grisáceo
+      "Climate variability" = "#55A868", # verde elegante
+      "Topographical heterogeneity" = "#C44E52",
+    name = "")) +
   labs(x = NULL, y = expression(R^2~" (%)")) +
   theme_bw(base_size = 16, base_family = "sans") +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank())
 
 final_plot
 # Save
