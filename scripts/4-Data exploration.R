@@ -65,14 +65,14 @@ continents <- ne_countries(
   scale = "medium") %>% st_transform(behrmann)
 
 # 7. Visualisation ----
-color_palette <- rev(brewer.pal(11, "Spectral"))
+color_palette <- scico(8, palette = "batlow", direction = -1)
 
 pb <- ggplot() +
   geom_sf(data = continents, fill = "grey60", colour = "grey60") +
   geom_sf(data = shape200, aes(fill = beta_sim_mean), color = NA, lwd = 0) + 
   scale_fill_gradientn(
     colours = color_palette,
-    name = expression("Mean " * beta * "sim"),
+    name = expression("Mean p"* beta * "sim"),
     na.value = "transparent",
     breaks = c(0.40,0.50,0.60,0.70,0.80),
     labels = function(x) ifelse(x %in% c(0, 1), as.character(x), sprintf("%.2f", x)),
@@ -88,22 +88,21 @@ pb <- ggplot() +
   coord_sf(datum = NA) +
   theme_bw() +
   theme(
-    text = element_text(family = "sans", size = 14),
-    legend.title = element_text(family = "sans", size = 14),
-    legend.text = element_text(family = "sans", size = 12),
+    text = element_text(family = "Gill Sans", size = 14),
+    legend.title = element_text(family = "Gill Sans", size = 14),
+    legend.text = element_text(family = "Gill Sans", size = 12),
     legend.position = "bottom",
     legend.justification = "center",
     legend.box = "horizontal",
     legend.margin = margin(t = 0, r = 0, b = 5, l = 0),
     plot.title = element_text(family = "sans"),
-    plot.subtitle = element_text(family = "sans"))
+    plot.subtitle = element_text(family = "Gill Sans"))
 
 pb
 
 # Export
-ggsave("results/Figures/phylogenetic.beta.diversity_200km.png", pb,
+ggsave("results/Figures/figureS2.png", pb,
        width = 7.7, height = 5, units = "in", dpi = 400)
-
 #------------------------------------------
 ### 2.- SAMPLE COMPLETENESS ANALYSIS
 #------------------------------------------
@@ -209,8 +208,8 @@ behrmann <- "+proj=cea +lon_0=0 +lat_ts=30 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS
 
 map <- st_transform(continents, behrmann)
 # Color palette for quality categories
-colors <- c("#3288BD", "#FEE08B", "#D7191C")
-
+colors <- scico(3, palette = "batlow", direction = -1)
+#colors <- scico(3, palette = "tokyo")
 #####################################################################
 ### 100KM completeness map ----
 #####################################################################
@@ -236,7 +235,7 @@ completeness100 <- completeness100 %>%
 table(completeness100$Quality)
 
 completenes_100km <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "grey70", colour = "grey70") +
   geom_sf(data = without_estimation100, fill = "gray10", color = "gray10", linewidth = 0.05) +
   geom_sf(data = completeness100, aes(fill = Quality), linewidth = 0.05, color = NA) +
   scale_fill_manual(values = colors, name = "") +
@@ -279,16 +278,22 @@ completeness200 <- completeness200 %>%
 table(completeness200$Quality)
 
 completenes_200km <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "gray60", colour = "gray60") +
   geom_sf(data = without_estimation200, fill = "gray10", color = "gray10", linewidth = 0.05) +
   geom_sf(data = completeness200, aes(fill = Quality), linewidth = 0.05, color = NA) +
-  scale_fill_manual(values = colors, name = "", guide = "none") +
-  theme_bw() +
+  scale_fill_manual(values = colors, name = "", guide = "legend") +
+  theme_map() +
   theme(
     axis.title = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank(),
-    panel.grid = element_blank()) +
+    panel.grid = element_blank(),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.justification = "center",
+    legend.box.just = "center",
+    legend.title = element_text(size = 14, family = "Gill Sans", face = "bold"),
+    legend.text = element_text(size = 14, family = "Gill Sans")) +
   coord_sf(expand = FALSE)
 completenes_200km
 
@@ -317,7 +322,7 @@ completeness400 <- completeness400 %>%
 table(completeness400$Quality)
 
 completenes_400km <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "grey70", colour = "grey70") +
   geom_sf(data = without_estimation400, fill = "gray10", color = "gray10", linewidth = 0.05) +
   geom_sf(data = completeness400, aes(fill = Quality), linewidth = 0.05, color = NA) +
   scale_fill_manual(values = colors, name = "", guide = "none") +
@@ -355,7 +360,7 @@ completeness800 <- completeness800 %>%
 table(completeness800$Quality)
          
 completenes_800km <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "grey70", colour = "grey70") +
     geom_sf(data = without_estimation800, fill = "gray10", color = "gray10", linewidth = 0.05) +
     geom_sf(data = completeness800, aes(fill = Quality), linewidth = 0.05, color = NA) +
     scale_fill_manual(values = colors, name = "", guide = "none") +
@@ -372,7 +377,31 @@ completenes_800km
 ### Combine all completeness maps ----
 #####################################################################
 library(patchwork)
-combined_maps <- (completenes_100km | completenes_200km) /
-  (completenes_400km | completenes_800km)
+# We define a negative margin adjustment to "glue" the maps
+tight_theme <- theme(
+  plot.margin = margin(t = -15, r = 5, b = -15, l = 5, unit = "pt"),
+  legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+  legend.box.margin = margin(t = -10, r = 0, b = 0, l = 0))
+
+# 2. We combined the maps by applying the compact theme and automatic labels.
+fuente_editorial <- "Gill Sans"
+combined_maps <- (completenes_100km + tight_theme | completenes_200km + tight_theme) /
+  (completenes_400km + tight_theme | completenes_800km + tight_theme) + 
+  plot_layout(guides = 'collect') +
+  plot_annotation(
+    tag_levels = "a",
+    theme = theme(plot.tag = element_text(family = fuente_editorial, face = "bold", size = 22))) & 
+  theme(
+    text = element_text(family = fuente_editorial),
+    legend.position = "bottom",
+    legend.text = element_text(family = fuente_editorial, size = 18),
+    legend.title = element_text(family = fuente_editorial, size = 18, face = "bold"),
+    plot.title = element_text(family = fuente_editorial))
 combined_maps
-ggsave("results/Figures/completeness.png", plot = combined_maps, width = 10, height = 8,units = "in",dpi = 400)
+# Save
+ggsave("results/Figures/FigureS1.png", 
+       plot = combined_maps, 
+       width = 12, 
+       height = 6, 
+       units = "in", 
+       dpi = 400)

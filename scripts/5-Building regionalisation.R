@@ -28,6 +28,7 @@ library(patchwork)       # Flexible system to compose ggplot2 plots
 library(sabre)           # Spatial Association Between Regionalizations analysis
 library(viridis)         # Color scales
 library(vegan)
+library(scico)
 ## ============================================================
 ## Step 2: Load Input Files
 ## Load pre-processed phylogenetic beta diversity and site data
@@ -101,8 +102,8 @@ hc100 <- stats::hclust(beta_sim_mean100, method = "average")
 clusters <- cutree(hc100, k = 5)
 
 # Colour palette
-colors100 <- as.character(paletteer_c("grDevices::Spectral", 5))
-
+colors100 <- as.character(scico(5, palette = "batlow"))
+#colors100 <- as.character(scico(5, palette = "tokyo"))
 # Constructing dendrograms and extracting colours
 dend100 <- as.dendrogram(hc100)
 dend100 <- color_branches(dend100, k = 5, col = colors100)
@@ -129,12 +130,12 @@ dend_100 <- fviz_dend(dend100, k = 5, show_labels = FALSE, k_colors = colors100,
                       rect = FALSE, horiz = FALSE, main = "") + 
   theme_bw() +
   theme(
-    axis.text.y = element_text(size = 16, family = "sans"),   # Y-axis labels
-    axis.title.y = element_text(size = 16, family = "sans"),  # Y-axis title
-    axis.text.x = element_text(size = 16, family = "sans"),   # X-axis labels
-    axis.title.x = element_text(size = 16, family = "sans")) + # X-axis title
-  ylab("Mean βsim") + 
-  xlab("Regions")
+    axis.text.y = element_text(size = 16, family = "Gill Sans"),   # Y-axis labels
+    axis.title.y = element_text(size = 16, family = "Gill Sans"),  # Y-axis title
+    axis.text.x = element_blank(),     # Borra los números/etiquetas
+    axis.ticks.x = element_blank(),    # Borra las pequeñas rayitas de la escala
+    axis.title.x = element_blank()) +    # Borra el espacio del título
+  ylab(expression("Mean " * p*beta * "sim"))
 dend_100
 
 # Plot the map
@@ -160,7 +161,7 @@ map <- st_transform(continents, behrmann)
 bioregion100 <- st_transform(bioregion100, behrmann)
 
 map.regions100 <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "gray60", colour = "gray60") +
   geom_sf(data = bioregion100, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
   theme_map() +
@@ -200,7 +201,7 @@ group_color_map <- group_df %>%
   mutate(group = as.character(group))
 
 nmds100 <- ggplot(nmds_points100, aes(x = NMDS1, y = NMDS2, colour = factor(group))) +
-  geom_point(size = 2, alpha = 0.6) +
+  geom_point(size = 2, alpha = 0.7) +
   scale_color_manual(values = setNames(group_color_map$dend_color, group_color_map$group)) +
   labs(x = "NMDS 1", y = "NMDS 2") +
   annotate("text", 
@@ -208,10 +209,10 @@ nmds100 <- ggplot(nmds_points100, aes(x = NMDS1, y = NMDS2, colour = factor(grou
            y = min(nmds_points100$NMDS2), 
            label = paste("Stress =", round(nmds_100$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill Sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16, family = "sans"),
-        axis.text = element_text(size = 16, family = "sans"))
+        axis.title = element_text(size = 16, family = "Gill Sans"),
+        axis.text = element_text(size = 16, family = "Gill Sans"))
 nmds100
 
 ## ============================================================
@@ -294,7 +295,8 @@ hc200 <- stats::hclust(beta_sim_mean200, method = "average")
 clusters200 <- cutree(hc200, k = 6)
 
 # Colour palette
-colors200 <- as.character(paletteer_c("grDevices::Spectral", 6))
+colors200 <- as.character(scico(6, palette = "batlow"))
+#colors200 <- as.character(scico(6, palette = "tokyo"))
 
 # Constructing dendrograms and extracting colours
 dend200 <- as.dendrogram(hc200)
@@ -323,12 +325,12 @@ dend_200 <- fviz_dend(dend200, k = 6, show_labels = FALSE, k_colors = colors200,
                       rect = FALSE, horiz = FALSE, main = "") + 
   theme_bw() +
   theme(
-    axis.text.y = element_text(size = 16, family = "sans"),   # Y-axis labels
-    axis.title.y = element_text(size = 16, family = "sans"),  # Y-axis title
-    axis.text.x = element_text(size = 16, family = "sans"),   # X-axis labels
-    axis.title.x = element_text(size = 16, family = "sans")) + # X-axis title
-  ylab("Mean βsim") + 
-  xlab("Regions")
+    axis.text.y = element_text(size = 16, family = "Gill Sans"),   # Y-axis labels
+    axis.title.y = element_text(size = 16, family = "Gill Sans"),  # Y-axis title
+    axis.text.x = element_blank(),     # Borra los números/etiquetas
+    axis.ticks.x = element_blank(),    # Borra las pequeñas rayitas de la escala
+    axis.title.x = element_blank()) +    # Borra el espacio del título
+  ylab(expression("Mean " * p*beta * "sim"))
 dend_200
 
 # Plot the map
@@ -348,7 +350,7 @@ bioregion200 <- st_transform(bioregion200, behrmann)
 
 # Without names
 map.regions200 <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "gray60", colour = "gray60") +
   geom_sf(data = bioregion200, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() + 
   theme_map() +
@@ -367,11 +369,11 @@ map.regions200 <- ggplot() +
 map.regions200
 
 # With names
-groups <- c("Australian","Holarctic","Indo-Malaysian","Chile-Patagonian",
-            "Neotropical","Afrotropical")
+groups <- c("Australian (Aus)","Holarctic (H)","Indo-Malaysian (I-M)","Andean-Patagonian (A-P)",
+            "Neotropical (N)","Afrotropical (Afr)")
 
 map.regions200_names <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "grey70", colour = "grey70") +
   geom_sf(data = bioregion200, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity(
     name = NULL,
@@ -386,7 +388,7 @@ map.regions200_names <- ggplot() +
       direction = "horizontal")) +
   theme_map() +
   theme(
-    text = element_text(family = "sans", size = 30),
+    text = element_text(family = "Gill sans", size = 30),
     legend.position = "bottom",
     legend.justification = "center",
     legend.box.just = "center",
@@ -425,7 +427,7 @@ group_color_map200 <- group_df200 %>%
   mutate(group = as.character(group))
 
 nmds200 <- ggplot(nmds_points200, aes(x = NMDS1, y = NMDS2, colour = factor(group))) +
-  geom_point(size = 2, alpha = 0.6) +
+  geom_point(size = 2, alpha = 0.7) +
   scale_color_manual(values = setNames(group_color_map200$dend_color, group_color_map200$group)) +
   labs(x = "NMDS 1", y = "NMDS 2") +
   annotate("text", 
@@ -433,10 +435,10 @@ nmds200 <- ggplot(nmds_points200, aes(x = NMDS1, y = NMDS2, colour = factor(grou
            y = min(nmds_points200$NMDS2), 
            label = paste("Stress =", round(nmds_200$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16, family = "sans"),
-        axis.text = element_text(size = 16, family = "sans"))
+        axis.title = element_text(size = 16, family = "Gill sans"),
+        axis.text = element_text(size = 16, family = "Gill sans"))
 nmds200
 
 ## ============================================================
@@ -523,7 +525,8 @@ rownames(comm400) <- shape400$idcell  # Ensure matrix and spatial data match
 hc400 <- stats::hclust(beta_sim_mean400, method = "average")
 clusters400 <- cutree(hc400, k = 20)
 # Colour palette
-colors400 <- as.character(paletteer_c("grDevices::Spectral", 20))
+colors400 <- as.character(scico(20, palette = "batlow"))
+#colors400 <- as.character(scico(20, palette = "tokyo"))
 # Constructing dendrograms and extracting colours
 dend400 <- as.dendrogram(hc400)
 dend400 <- color_branches(dend400, k = 20, col = colors400)
@@ -545,12 +548,12 @@ bioregion400 <- shape400 %>%
 dend_400 <- fviz_dend(dend400, k = 20, show_labels = FALSE, k_colors = colors400,
                       rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
-    axis.text.y = element_text(size = 16, family = "sans"),   # Y-axis labels
-    axis.title.y = element_text(size = 16, family = "sans"),  # Y-axis title
-    axis.text.x = element_text(size = 16, family = "sans"),   # X-axis labels
-    axis.title.x = element_text(size = 16, family = "sans")) + # X-axis title
-  ylab("Mean βsim") + 
-  xlab("Regions")
+    axis.text.y = element_text(size = 16, family = "Gill Sans"),   # Y-axis labels
+    axis.title.y = element_text(size = 16, family = "Gill Sans"),  # Y-axis title
+    axis.text.x = element_blank(),     # Borra los números/etiquetas
+    axis.ticks.x = element_blank(),    # Borra las pequeñas rayitas de la escala
+    axis.title.x = element_blank()) +    # Borra el espacio del título
+  ylab(expression("Mean " * p*beta * "sim"))
 dend_400
 
 # Plot the map
@@ -569,7 +572,7 @@ st_write(bioregion400, "results/SIG/bioregion400km.gpkg")
 bioregion400 <- st_transform(bioregion400, behrmann)
 
 map.regions400 <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "gray60", colour = "gray60") +
   geom_sf(data = bioregion400, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
   theme_map() +
@@ -607,7 +610,7 @@ group_color_map400 <- group_df400 %>%
   mutate(group = as.character(group))
 
 nmds400 <- ggplot(nmds_points400, aes(x = NMDS1, y = NMDS2, colour = factor(group))) +
-  geom_point(size = 2, alpha = 0.6) +
+  geom_point(size = 2, alpha = 0.7) +
   scale_color_manual(values = setNames(group_color_map400$dend_color, group_color_map400$group)) +
   labs(x = "NMDS 1", y = "NMDS 2") +
   annotate("text", 
@@ -615,10 +618,10 @@ nmds400 <- ggplot(nmds_points400, aes(x = NMDS1, y = NMDS2, colour = factor(grou
            y = min(nmds_points400$NMDS2), 
            label = paste("Stress =", round(nmds_400$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16, family = "sans"),
-        axis.text = element_text(size = 16, family = "sans"))
+        axis.title = element_text(size = 16, family = "Gill sans"),
+        axis.text = element_text(size = 16, family = "Gill sans"))
 nmds400
 
 ## ============================================================
@@ -699,7 +702,8 @@ hc800 <- stats::hclust(beta_sim_mean800, method = "average")
 clusters800 <- cutree(hc800, k = 16)
 
 # Colour palette
-colors800 <- as.character(paletteer_c("grDevices::Spectral", 16))
+colors800 <- as.character(scico(16, palette = "batlow"))
+#colors800 <- as.character(scico(16, palette = "tokyo"))
 
 # Constructing dendrograms and extracting colours
 dend800 <- as.dendrogram(hc800)
@@ -726,12 +730,12 @@ bioregion800 <- shape800 %>%
 dend_800 <- fviz_dend(dend800, k = 16, show_labels = FALSE, k_colors = colors800,
                       rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
-    axis.text.y = element_text(size = 16, family = "sans"),   # Y-axis labels
-    axis.title.y = element_text(size = 16, family = "sans"),  # Y-axis title
-    axis.text.x = element_text(size = 16, family = "sans"),   # X-axis labels
-    axis.title.x = element_text(size = 16, family = "sans")) + # X-axis title
-  ylab("Mean βsim") + 
-  xlab("Regions")
+    axis.text.y = element_text(size = 16, family = "Gill Sans"),   # Y-axis labels
+    axis.title.y = element_text(size = 16, family = "Gill Sans"),  # Y-axis title
+    axis.text.x = element_blank(),     # Borra los números/etiquetas
+    axis.ticks.x = element_blank(),    # Borra las pequeñas rayitas de la escala
+    axis.title.x = element_blank()) +    # Borra el espacio del título
+  ylab(expression("Mean " * p*beta * "sim"))
 dend_800
 
 # Plot the map
@@ -750,7 +754,7 @@ st_write(bioregion800, "results/SIG/bioregion800km.gpkg")
 bioregion800 <- st_transform(bioregion800, behrmann)
 
 map.regions800 <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "gray60", colour = "gray60") +
   geom_sf(data = bioregion800, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() +
   theme_map() +
@@ -788,7 +792,7 @@ group_color_map800 <- group_df800 %>%
   mutate(group = as.character(group))
 
 nmds800 <- ggplot(nmds_points800, aes(x = NMDS1, y = NMDS2, colour = factor(group))) +
-  geom_point(size = 2, alpha = 0.6) +
+  geom_point(size = 2, alpha = 0.7) +
   scale_color_manual(values = setNames(group_color_map800$dend_color, group_color_map800$group)) +
   labs(x = "NMDS 1", y = "NMDS 2") +
   annotate("text", 
@@ -796,10 +800,10 @@ nmds800 <- ggplot(nmds_points800, aes(x = NMDS1, y = NMDS2, colour = factor(grou
            y = min(nmds_points800$NMDS2), 
            label = paste("Stress =", round(nmds_800$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16, family = "sans"),
-        axis.text = element_text(size = 16, family = "sans"))
+        axis.title = element_text(size = 16, family = "Gill sans"),
+        axis.text = element_text(size = 16, family = "Gill sans"))
 nmds800
 
 ## ============================================================
@@ -818,11 +822,10 @@ all <- wrap_plots(
   wrap_elements(b),
   wrap_elements(c),
   wrap_elements(d),
-  nrow = 2, ncol = 2
-) &
+  nrow = 2, ncol = 2) &
   theme(plot.margin = margin(0, 0, 0, 0))
 all
-ggsave("results/Figures/all-maps.png", all, dpi = 400, width = 18, height = 15)
+ggsave("results/Figures/Figure4.png", all, dpi = 400, width = 18, height = 15)
 
 # Number of clusters and clustering algorithm
 all_algorithm <- grid.arrange(e, f, g, h,
@@ -862,10 +865,10 @@ sil_100 <- fviz_silhouette(sil100) +
     yintercept = mean(sil100[, "sil_width"]),
     linetype = "dashed", color = "red", linewidth = 0.8) +
   labs(
-    title = "a) 100 km (k = 5)",
+    title = "100 km (k = 5)",
     x = "",
     y = "Silhouette width") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 14, base_family = "Gill sans") +
   theme(
     plot.title = element_text(hjust = 0, margin = margin(b = 15)),
     legend.position = "right",
@@ -903,10 +906,10 @@ sil_200 <- fviz_silhouette(sil200) +
     yintercept = mean(sil200[, "sil_width"]),
     linetype = "dashed", color = "red", linewidth = 0.8) +
   labs(
-    title = "b) 200 km (k = 6)",
+    title = "200 km (k = 6)",
     x = "",
     y = "Silhouette width") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 14, base_family = "Gill sans") +
   theme(
     plot.title = element_text(hjust = 0, margin = margin(b = 15)),
     legend.position = "right",
@@ -945,10 +948,10 @@ sil_400 <- fviz_silhouette(sil400) +
     yintercept = mean(sil400[, "sil_width"]),
     linetype = "dashed", color = "red", linewidth = 0.8) +
   labs(
-    title = "c) 400 km (k = 20)",
+    title = "400 km (k = 20)",
     x = "",
     y = "Silhouette width") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 14, base_family = "Gill sans") +
   theme(
     plot.title = element_text(hjust = 0, margin = margin(b = 15)),
     legend.position = "right",
@@ -1001,10 +1004,10 @@ sil_800 <- fviz_silhouette(sil800) +
     yintercept = mean(sil800[, "sil_width"]),
     linetype = "dashed", color = "red", linewidth = 0.8) +
   labs(
-    title = "d) 800 km (k = 16)",
+    title = "800 km (k = 16)",
     x = "",
     y = "Silhouette width") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 14, base_family = "Gill sans") +
   theme(
     plot.title = element_text(hjust = 0, margin = margin(b = 15)),
     legend.position = "right",
@@ -1038,9 +1041,45 @@ all_sil <- grid.arrange(sil_100, sil_200, sil_400, sil_800,
                                               c(3, 4)),
                         heights = c(5, 5))
 
-ggsave("results/Figures/all-silhouette.png", all_sil, 
+ggsave("results/Figures/FigureS4.png", all_sil, 
+       dpi = 400, width = 17, height = 15)
+ggsave("results/Figures/FigureS-GEB.png", all_sil, 
+       dpi = 400, width = 17, height = 15)
+ggsave("results/Figures/FigureS-GEB.png", all_sil, 
        dpi = 400, width = 17, height = 15)
 
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# 1. Extraer los datos y convertirlos a data frames
+df100 <- as.data.frame(sil100[ , 1:3]) %>% mutate(Resolution = "100 km")
+df200 <- as.data.frame(sil200[ , 1:3]) %>% mutate(Resolution = "200 km")
+df400 <- as.data.frame(sil400[ , 1:3]) %>% mutate(Resolution = "400 km")
+df800 <- as.data.frame(sil800[ , 1:3]) %>% mutate(Resolution = "800 km")
+
+# 2. Combinar todos los datos
+all_sil_data <- bind_rows(df100, df200, df400, df800) %>%
+  mutate(Resolution = factor(Resolution, levels = c("100 km", "200 km", "400 km", "800 km")))
+
+# 3. Crear el gráfico de violín (sustituye a tu objeto all_sil)
+violin_sil <- ggplot(all_sil_data, aes(x = Resolution, y = sil_width, fill = Resolution)) +
+  geom_violin(trim = FALSE, alpha = 0.6, show.legend = FALSE) +
+  geom_boxplot(width = 0.1, color = "black", outlier.shape = NA, show.legend = FALSE) +
+  # Añadimos una línea roja con el promedio global para referencia
+  geom_hline(yintercept = mean(all_sil_data$sil_width), linetype = "dashed", color = "red") +
+  labs(
+    x = "Grid resolution",
+    y = "Silhouette width",
+    title = "") +
+  # Usamos una paleta scico para mantener la estética científica
+  scale_fill_scico_d(palette = "roma") + 
+  theme_bw(base_size = 16, base_family = "Gill Sans") +
+  theme(
+    panel.grid.major.x = element_blank())
+
+# Visualizar
+violin_sil
 ##############
 # Comparative analysis
 # Calculate average silhouette widths
@@ -1094,6 +1133,7 @@ library(ggforce) # for ellipses in NMDS
 library(ggdendro) # To work with dendrograms in ggplot
 library(ggplotify)
 library(bioregion)
+library(readr)
 
 ### ============================================================
 ##                             200 KM
@@ -1150,28 +1190,56 @@ table(clusters_region200)
 names(clusters_realm200) <- rownames(tree.orchids$clusters)
 names(clusters_region200) <- rownames(tree.orchids$clusters)
 
-# Merge regions with fewer than 10 cells
+## ============================================================
+## Merge regions with fewer than 10 cells (multivariate space)
+## ============================================================
+# Initial allocation
 shape200$region <- clusters_region200[as.character(shape200$idcell)]
-nb <- spdep::poly2nb(shape200, queen = TRUE)
 
-region_sizes <- table(shape200$region)
-region_sizes
+# Size of regions
+region_sizes <- table(clusters_region200)
 small_regions <- names(region_sizes[region_sizes < 10])
+valid_regions <- names(region_sizes[region_sizes >= 10])
 
+# Community matrix in the same order as clusters
+comm_mat <- as.matrix(comm200)
+
+# calculate multivariate centroids of valid regions
+region_centroids <- lapply(valid_regions, function(r) {
+  colMeans(comm_mat[clusters_region200 == r, , drop = FALSE])
+})
+region_centroids <- do.call(rbind, region_centroids)
+rownames(region_centroids) <- valid_regions
+
+# Clean copy of the region vector
+clusters_region200_clean <- clusters_region200
+
+# Reasignación
 for (reg in small_regions) {
-  idx_small <- which(shape200$region == reg)
-  neigh_regs <- unlist(nb[idx_small])
-  neighbor_regions <- unique(shape200$region[neigh_regs])
-  neighbor_regions <- neighbor_regions[neighbor_regions != reg]
-  if (length(neighbor_regions) > 0) {
-    sizes <- table(shape200$region)
-    best_region <- neighbor_regions[which.max(sizes[neighbor_regions])]
-    shape200$region[idx_small] <- best_region
+  
+  cells <- which(clusters_region200 == reg)
+  
+  for (i in cells) {
+    
+    cell_vec <- comm_mat[i, , drop = FALSE]
+    
+    # Distancia a centroides válidos
+    d <- vegan::vegdist(rbind(cell_vec, region_centroids),
+                        method = "bray")
+    d <- as.numeric(d)[1:nrow(region_centroids)]
+    
+    best_region <- valid_regions[which.min(d)]
+    clusters_region200_clean[i] <- best_region
   }
 }
 
-clusters_region200 <- shape200$region
-names(clusters_region200) <- shape200$idcell
+# Reassign the shapefile
+shape200$region <- clusters_region200_clean[as.character(shape200$idcell)]
+
+# Replace the original object to maintain flow
+clusters_region200 <- clusters_region200_clean
+
+# Verificación
 table(clusters_region200)
 
 # Graphing to define colours
@@ -1190,7 +1258,7 @@ best.hclust$labels <- names(clusters_region200)
 dend200 <- as.dendrogram(best.hclust)
 plot(dend200)
 # Fixed palette of 10 regions
-colors200_region <- as.character(paletteer_c("grDevices::Spectral", 10))
+colors200_region <- as.character(scico(10, palette = "batlow"))
 final_clusters <- sort(unique(clusters_region200))
 names(colors200_region) <- final_clusters
 
@@ -1204,8 +1272,8 @@ dend_200 <- ggplot(ggdend) +
   theme(
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
-    axis.text.y = element_text(size = 16, family = "sans"),
-    axis.title = element_text(size = 16, family = "sans")
+    axis.text.y = element_text(size = 16, family = "Gill sans"),
+    axis.title = element_text(size = 16, family = "Gill sans")
   ) +
   ylab("Mean βsim") +
   xlab("Regions")
@@ -1219,9 +1287,9 @@ phylo_tree <- as.phylo(as.hclust(tree.orchids$algorithm$final.tree))
 # Define clusters and colours
 final_clusters <- sort(unique(clusters_region200))
 final_clusters
-colors_region <- c("#584B9FFF","#FCDE85FF","#584B9FFF","#A71B4BFF",
-                   "#ED820AFF","#FCDE85FF","#BAEEAEFF","#BAEEAEFF",
-                   "#00B1B5FF","#00B1B5FF")
+
+colors_region <- c("#185461","#FAA588","#185461","#001959","#B28D2E",
+                   "#FAA588","#F9CCF9","#F9CCF9","#577646","#577646")
 names(colors_region) <- final_clusters
 
 # Collapse leaves: keep n_keep leaves per cluster
@@ -1282,6 +1350,7 @@ p1 <- g +
   scale_color_manual(values = colors_region, na.value = "grey50") +
   theme_bw() +
   theme(
+    text = element_text(family = "ArialMT", size = 10),
     axis.title = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank(),
@@ -1294,7 +1363,7 @@ shape200$region <- clusters_region200[shape200$idcell]
 shape200$realm  <- clusters_realm200[shape200$idcell]
 
 # Palletes
-colors200_realms  <- as.character(paletteer_c("grDevices::Spectral", 6))
+colors200_realms  <- as.character(scico(6, palette = "batlow"))
 names(colors200_realms) <- sort(unique(shape200$realm))
 names(colors200_region) <- sort(unique(shape200$region))
 
@@ -1307,7 +1376,7 @@ ggplot(shape200) +
   geom_sf(aes(fill = color_region)) +
   scale_fill_identity() +
   theme_bw() +
-  labs(title = "Mapa de 11 regiones biogeográficas")
+  labs(title = "Mapa de 10 regiones biogeográficas")
 
 # Map of kingdoms
 ggplot(shape200) +
@@ -1332,12 +1401,12 @@ ggplot(shape200) +
     panel.grid = element_blank())
 
 cluster_to_realm <- c(
-  "1" = "Holartic",
-  "2" = "Australian",
-  "3" = "Chile-Patagonian",
-  "4" = "Neotropical",
-  "5" = "Afrotropical",
-  "6" = "Indo-Malaysian")
+  "1" = "Holartic (H)",
+  "2" = "Australian (Aus)",
+  "3" = "Andean-Patagonian (A-P)",
+  "4" = "Neotropical (N)",
+  "5" = "Afrotropical (Afr)",
+  "6" = "Indo-Malaysian (I-M)")
 # Assign kingdom names to each cell
 shape200$realm_name <- cluster_to_realm[as.character(shape200$realm)]
 
@@ -1345,17 +1414,17 @@ shape200$realm_name <- cluster_to_realm[as.character(shape200$realm)]
 st_write(shape200, "results/SIG/bioregion200km_realms-phyloregions.gpkg")
 # 3. Create a manual colour vector in the order you want
 manual_realm_colors <- c(
-  "Australian"       = "#A71B4BFF",
-  "Chile-Patagonian" = "#ED820AFF", 
-  "Neotropical"      = "#FCDE85FF", 
-  "Afrotropical"     = "#BAEEAEFF",  
-  "Indo-Malaysian"   = "#00B1B5FF",  
-  "Holartic"         = "#584B9FFF")
+  "Australian (Aus)"       = "#001959",
+  "Andean-Patagonian (A-P)" = "#B28D2E", 
+  "Neotropical (N)"      = "#FAA588", 
+  "Afrotropical (Afr)"     = "#F9CCF9",  
+  "Indo-Malaysian (I-M)"   = "#577646",  
+  "Holartic (H)"         = "#185461")
 
 # 4. Assign colours according to kingdom names
 shape200$color_realm <- manual_realm_colors[shape200$realm_name]
-colors.200<-c("#A71B4BFF","#ED820AFF","#FCDE85FF",
-              "#BAEEAEFF","#00B1B5FF","#584B9FFF")
+colors.200<-c("#001959","#B28D2E","#FAA588",
+              "#F9CCF9","#577646","#185461")
 # 5. Check
 table(shape200$realm_name)
 table(shape200$color_realm)
@@ -1402,8 +1471,8 @@ ggplot() +
   labs(title = "Contornos de regiones seleccionadas")
 
 # With names of kingdoms
-groups <- c("Australian","Chile-Patagonian","Neotropical",
-            "Afrotropical","Indo-Malaysian","Holarctic")
+groups <- c("Australian (Aus)","Andean-Patagonian (A-P)","Neotropical (N)",
+            "Afrotropical (Afr)","Indo-Malaysian (I-M)","Holarctic (H)")
 
 # Convert regions to lines
 lines_union <- st_cast(regions_union, "MULTILINESTRING")
@@ -1412,7 +1481,7 @@ contor <- ggplot() +
   geom_sf(data = map, fill = "grey60", colour = "grey60") +
   geom_sf(data = bioregion200, aes(fill = color_realm), colour = NA, size = 0) +
   # Draw thick lines of the regions
-  geom_sf(data = lines_union, colour = "black", size = 50, linetype = "solid") +
+  geom_sf(data = lines_union, colour = "black", size = 1000, linetype = "solid") +
   scale_fill_identity(
     name = NULL,
     breaks = colors.200,
@@ -1426,14 +1495,14 @@ contor <- ggplot() +
       direction = "horizontal")) +
   theme_map() +
   theme(
-    text = element_text(family = "sans", size = 30),
+    text = element_text(family = "Gill sans", size = 20),
     legend.position = "bottom",
     legend.justification = "center",
     legend.box.just = "center",
     legend.margin = margin(t = 10, b = 5),
     legend.spacing.x = unit(1, "cm")) +
   theme(
-    text = element_text(size = 30),
+    text = element_text(family = "Gill sans",size = 25),
     axis.title.x = element_blank(),        
     axis.text.x = element_blank(),     
     axis.ticks.x = element_blank(),    
@@ -1445,7 +1514,6 @@ contor <- ggplot() +
   coord_sf(expand = FALSE)
       
 contor
-
 
 ## ============================================================
 ## NMDS for Realms (6 groups)
@@ -1471,7 +1539,7 @@ nmds_realms_plot <- ggplot(nmds_points_realms, aes(x = NMDS1, y = NMDS2, colour 
            y = min(nmds_points_realms$NMDS2), 
            label = paste("Stress =", round(nmds_realms$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill sans") +
   theme(legend.position = "right",
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 16))
@@ -1483,20 +1551,31 @@ nmds_realms_centroids <- nmds_points_realms %>%
   summarise(NMDS1 = mean(NMDS1),
             NMDS2 = mean(NMDS2))
 
-# Plot only the centroids
+# etiquetas
+mis_etiquetas <- c("Aus", "A-P", "N", "Afr", "I-M", "H") 
+# Agregarlo al dataframe de centroides
+nmds_realms_centroids$label_manual <- mis_etiquetas
+
 nmds_realms_centroids_plot <- ggplot(nmds_realms_centroids, aes(x = NMDS1, y = NMDS2, colour = group)) +
-  geom_point(size = 17) +
+  # Círculo grande (ajusta el tamaño si 18 es demasiado)
+  geom_point(size = 16) + 
+  # Texto usando tu vector manual
+  geom_text(aes(label = label_manual), 
+            colour = "grey50", 
+            family = "Gill Sans", 
+            size = 6) + 
+  
   scale_color_manual(values = manual_realm_colors) +
-  labs(x = "NMDS 1", y = "NMDS 2", title = "") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  labs(x = "NMDS 1", y = "NMDS 2") +
+  theme_bw(base_size = 17, base_family = "Gill Sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16),
-        axis.text = element_text(size = 16))
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 18))
 
 nmds_realms_centroids_plot
 
 ## ============================================================
-## Step 7b: NMDS for Regions (11 groups)
+## Step 7b: NMDS for Regions (10 groups)
 ## ============================================================
 set.seed(123)
 # NMDS para regiones
@@ -1521,7 +1600,7 @@ nmds_regions_plot <- ggplot(nmds_points_regions, aes(x = NMDS1, y = NMDS2, colou
            y = min(nmds_points_regions$NMDS2), 
            label = paste("Stress =", round(nmds_regions$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill sans") +
   theme(legend.position = "right",
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 16))
@@ -1536,22 +1615,34 @@ nmds_regions_centroids <- nmds_points_regions %>%
 
 # Plot only the centroids
 # Define colours manually (same colours used for the dendrogram)
-colors_region <- c("#584B9FFF","#FCDE85FF","#584B9FFF","#A71B4BFF",
-                   "#ED820AFF","#FCDE85FF","#BAEEAEFF","#BAEEAEFF",
-                   "#00B1B5FF","#00B1B5FF")
+colors_region <- c("#185461","#FAA588","#185461","#001959","#B28D2E",
+                   "#FAA588","#F9CCF9","#F9CCF9","#577646","#577646")
 names(colors_region) <- sort(unique(nmds_regions_centroids$group))  # Ensure correspondence with levels
 
 # Plot only the centroids with manual colours
+# etiquetas
+mis_etiquetas2 <- c("H2","N1","H1","AUS","A-P","N2","Afr2","Afr1","I-M2","I-M1")
+# Agregarlo al dataframe de centroides
+nmds_regions_centroids$label_manual <- mis_etiquetas2
+
 nmds_regions_centroids_plot <- ggplot(nmds_regions_centroids, aes(x = NMDS1, y = NMDS2, colour = group)) +
-  geom_point(size = 17) +
+  # Círculo grande
+  geom_point(size = 16) + 
+  # Texto usando tu vector manual
+  geom_text(aes(label = label_manual), 
+            colour = "grey50", 
+            family = "Gill Sans", 
+            size = 6) + 
+  
   scale_color_manual(values = colors_region) +
-  labs(x = "NMDS 1", y = "NMDS 2", title = "") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  labs(x = "NMDS 1", y = "NMDS 2") +
+  theme_bw(base_size = 17, base_family = "Gill Sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16),
-        axis.text = element_text(size = 16))
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 18))
 
 nmds_regions_centroids_plot
+
 
 #Final mnds
 # Calculate common limits for both NMDS
@@ -1623,7 +1714,7 @@ b <- contor / bottom_row +
   plot_layout(heights = c(5, 4))
 
 b
-ggsave("results/Figures/phyloregions200km_all.png", b, dpi = 400, width = 15, height = 12)
+ggsave("results/Figures/Figure1.png", b, dpi = 400, width = 15, height = 12)
 #####################################################################
 
 ### 3.- Validation
@@ -1758,8 +1849,8 @@ hc200_subset <- stats::hclust(beta_subset_dist, method = "average")
 clusters200_subset <- cutree(hc200_subset, k = 6)
 
 # Color palette
-colors200_subset <- as.character(paletteer_c("grDevices::Spectral", 6))
-
+colors200_subset <- as.character(scico(6, palette = "batlow"))
+#colors200_subset <- as.character(scico(6, palette = "tokyo"))
 # Dendrogram construction
 dend200_subset <- as.dendrogram(hc200_subset)
 dend200_subset <- color_branches(dend200_subset, k = 6, col = colors200_subset)
@@ -1787,12 +1878,12 @@ bioregion200_subset <- shape200_subset %>%
 dend_200_subset <- fviz_dend(dend200_subset, k = 6, show_labels = FALSE, k_colors = colors200_subset,
                              rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
-    axis.text.y = element_text(size = 16, family = "sans"),
-    axis.title.y = element_text(size = 16, family = "sans"),
-    axis.text.x = element_text(size = 16, family = "sans"),
-    axis.title.x = element_text(size = 16, family = "sans")) +
-  ylab("Mean βsim") + 
-  xlab("regions")
+    axis.text.y = element_text(size = 16, family = "Gill Sans"),   # Y-axis labels
+    axis.title.y = element_text(size = 16, family = "Gill Sans"),  # Y-axis title
+    axis.text.x = element_blank(),     # Borra los números/etiquetas
+    axis.ticks.x = element_blank(),    # Borra las pequeñas rayitas de la escala
+    axis.title.x = element_blank()) +    # Borra el espacio del título
+  ylab(expression("Mean " * p*beta * "sim"))
 dend_200_subset
 # Plot map
 map200_subset <- ggplot() +
@@ -1808,7 +1899,7 @@ st_write(bioregion200_subset, "results/SIG/bioregion200km_WELL-SAMPLED_CELLS.gpk
 bioregion200_subset <- st_transform(bioregion200_subset, behrmann)
 
 map.regions200_subset <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "gray60", colour = "gray60") +
   geom_sf(data = bioregion200_subset, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() + 
   theme_map() +
@@ -1844,7 +1935,7 @@ group_color_map200_subset <- group_df200_subset %>%
   mutate(group = as.character(group))
 
 nmds200_subset <- ggplot(nmds_points200_subset, aes(x = NMDS1, y = NMDS2, colour = factor(group))) +
-  geom_point(size = 2, alpha = 0.6) +
+  geom_point(size = 2, alpha = 0.7) +
   scale_color_manual(
     values = setNames(group_color_map200_subset$dend_color, group_color_map200_subset$group)) +
   labs(x = "NMDS 1", y = "NMDS 2") +
@@ -1853,10 +1944,10 @@ nmds200_subset <- ggplot(nmds_points200_subset, aes(x = NMDS1, y = NMDS2, colour
            y = min(nmds_points200_subset$NMDS2), 
            label = paste("Stress =", round(nmds_200_subset$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16, family = "sans"),
-        axis.text = element_text(size = 16, family = "sans"))
+        axis.title = element_text(size = 16, family = "Gill sans"),
+        axis.text = element_text(size = 16, family = "Gill sans"))
 nmds200_subset
 # ============================================================
 # SECTION 11: COMBINE OUTPUTS
@@ -1948,8 +2039,8 @@ rownames(comm200) <- shape200$idcell
 hc200_subset2 <- stats::hclust(beta_subset_dist2, method = "average")
 clusters200_subset2 <- cutree(hc200_subset2, k = 20)
 
-colors200_subset2 <- as.character(paletteer_c("grDevices::Spectral", 20))
-
+colors200_subset2 <- as.character(scico(20, palette = "batlow"))
+#colors200_subset2 <- as.character(scico(20, palette = "tokyo"))
 dend200_subset2 <- as.dendrogram(hc200_subset2)
 dend200_subset2 <- color_branches(dend200_subset2, k = 20, col = colors200_subset2)
 
@@ -1972,12 +2063,12 @@ bioregion200_subset2 <- shape200_subset2 %>%
 dend_200_subset2 <- fviz_dend(dend200_subset2, k = 20, show_labels = FALSE, k_colors = colors200_subset2,
                               rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
-    axis.text.y = element_text(size = 16, family = "sans"),
-    axis.title.y = element_text(size = 16, family = "sans"),
-    axis.text.x = element_text(size = 16, family = "sans"),
-    axis.title.x = element_text(size = 16, family = "sans")) +
-  ylab("Mean βsim") + 
-  xlab("regions")
+    axis.text.y = element_text(size = 16, family = "Gill Sans"),   # Y-axis labels
+    axis.title.y = element_text(size = 16, family = "Gill Sans"),  # Y-axis title
+    axis.text.x = element_blank(),     # Borra los números/etiquetas
+    axis.ticks.x = element_blank(),    # Borra las pequeñas rayitas de la escala
+    axis.title.x = element_blank()) +    # Borra el espacio del título
+  ylab(expression("Mean " * p*beta * "sim"))
 dend_200_subset2
 
 map200_subset2 <- ggplot() +
@@ -1994,7 +2085,7 @@ st_write(bioregion200_subset2, "results/SIG/bioregion200km_POORLY-SAMPLED_CELLS.
 bioregion200_subset2 <- st_transform(bioregion200_subset2, behrmann)
 
 map.regions200_subset2 <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "gray60", colour = "gray60") +
   geom_sf(data = bioregion200_subset2, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() + 
   theme_map() +
@@ -2039,10 +2130,10 @@ nmds200_subset2 <- ggplot(nmds_points200_subset2, aes(x = NMDS1, y = NMDS2, colo
            y = min(nmds_points200_subset2$NMDS2), 
            label = paste("Stress =", round(nmds_200_subset2$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16, family = "sans"),
-        axis.text = element_text(size = 16, family = "sans"))
+        axis.title = element_text(size = 16, family = "Gill sans"),
+        axis.text = element_text(size = 16, family = "Gill sans"))
 nmds200_subset2
 # ============================================================
 # SECTION 20: COMBINE OUTPUTS
@@ -2117,8 +2208,8 @@ rownames(comm200) <- shape200$idcell
 hc200_sor <- stats::hclust(beta_sor_mean200, method = "average")
 clusters200_sor <- cutree(hc200_sor, k = 9)
 
-colors200_sor <- as.character(paletteer_c("grDevices::Spectral", 9))
-
+colors200_sor <- as.character(scico(9, palette = "batlow"))
+#colors200_sor <- as.character(scico(9, palette = "tokyo"))
 dend200_sor <- as.dendrogram(hc200_sor)
 dend200_sor <- color_branches(dend200_sor, k = 9, col = colors200_sor)
 
@@ -2141,12 +2232,12 @@ bioregion200_sor <- shape200 %>%
 dend_200_sor <- fviz_dend(dend200_sor, k = 9, show_labels = FALSE, k_colors = colors200_sor,
                           rect = FALSE, horiz = FALSE, main = "") + theme_bw() +
   theme(
-    axis.text.y = element_text(size = 16, family = "sans"),
-    axis.title.y = element_text(size = 16, family = "sans"),
-    axis.text.x = element_text(size = 16, family = "sans"),
-    axis.title.x = element_text(size = 16, family = "sans")) +
-  ylab("Mean βSør") + 
-  xlab("regions")
+    axis.text.y = element_text(size = 16, family = "Gill Sans"),   # Y-axis labels
+    axis.title.y = element_text(size = 16, family = "Gill Sans"),  # Y-axis title
+    axis.text.x = element_blank(),     # Borra los números/etiquetas
+    axis.ticks.x = element_blank(),    # Borra las pequeñas rayitas de la escala
+    axis.title.x = element_blank()) +    # Borra el espacio del título
+  ylab(expression(paste("Mean " * p* beta * "Sør"))) 
 dend_200_sor
 
 map200_sor <- ggplot() +
@@ -2163,7 +2254,7 @@ st_write(bioregion200_sor, "results/SIG/bioregion200km_sorensen.gpkg")
 bioregion200_sor <- st_transform(bioregion200_sor, behrmann)
 
 map.regions200_sor <- ggplot() +
-  geom_sf(data = map, fill = "grey60", colour = "grey60") +
+  geom_sf(data = map, fill = "gray60", colour = "gray60") +
   geom_sf(data = bioregion200_sor, aes(fill = color), colour = NA, size = 0.1) +
   scale_fill_identity() + 
   theme_map() +
@@ -2208,10 +2299,10 @@ nmds200_sor <- ggplot(nmds_points200_sor, aes(x = NMDS1, y = NMDS2, colour = fac
            y = min(nmds_points200_sor$NMDS2), 
            label = paste("Stress =", round(nmds_200_sor$stress, 3)),
            hjust = 0, size = 5, fontface = "italic") +
-  theme_bw(base_size = 16, base_family = "sans") +
+  theme_bw(base_size = 16, base_family = "Gill sans") +
   theme(legend.position = "none",
-        axis.title = element_text(size = 16, family = "sans"),
-        axis.text = element_text(size = 16, family = "sans"))
+        axis.title = element_text(size = 16, family = "Gill sans"),
+        axis.text = element_text(size = 16, family = "Gill sans"))
 nmds200_sor
 # ============================================================
 # SECTION 28: COMBINE OUTPUTS
@@ -2219,15 +2310,23 @@ nmds200_sor
 w <- map.regions200_sor / (nmds200_sor + dend_200_sor + plot_layout(widths = c(1, 1))) +
   plot_layout(heights = c(5, 3))
 w
+
 # ============================================================
 # SECTION 29: COMBINE ALL MAPS
 # ============================================================
-final_plot <- wrap_elements(x) / 
-  wrap_elements(yy) / 
-  wrap_elements(w) +
-  plot_layout(ncol = 1)
+final_plot <- wrap_elements(b) / 
+  (wrap_elements(x) + wrap_elements(yy)) +
+  plot_layout(heights = c(1, 1)) # Ajusta la proporción si es necesario
 final_plot
-ggsave("results/Figures/phyloregions200km_validation.png", final_plot, dpi = 400, width = 10, height = 18)
+
+#layout <- "
+#  #AA#
+#  BBCC
+#"
+#final_plot <- wrap_elements(b) + wrap_elements(x) + wrap_elements(yy) + 
+#  plot_layout(design = layout)
+#final_plot
+ggsave("results/Figures/FigureS7.png", final_plot, dpi = 400, width = 10, height = 18)
 
 #CONMBINE SUPPLEMENTARY FIGURES
 # Number of clusters and clustering algorithm
@@ -2327,3 +2426,174 @@ map.curv3
 #The MapCurves results:
 #The goodness of fit: 0.87 
 #Reference map: x
+
+#####################################################################
+# COMPARATIVE ANALYSIS
+#####################################################################
+# ============================================================
+# SECTION 31: our realms vs. angiosperms realms by Liu et al., 2023: https://doi.org/10.1038/s41467-023-38375-y
+# ============================================================
+library(sf)
+library(terra)
+library(raster)
+
+# Ruta al archivo
+orchid_gpkg <- "results/SIG/bioregion200km_realms-phyloregions.gpkg"
+# Leer el geopackage
+orchid_sf <- st_read(orchid_gpkg)
+# Ver estructura
+print(orchid_sf)
+st_geometry_type(orchid_sf)
+# angiosperms realms
+liu_shp <- "raw-data/PhyloRealms.new/PhyloRealms.new.shp"
+liu_sf <- st_read(liu_shp)
+print(liu_sf)
+st_geometry_type(liu_sf)
+#Change projection
+liu_sf <- st_set_crs(liu_sf, 4326)
+st_crs(liu_sf)
+behrmann_crs <- st_crs(orchid_sf)
+liu_sf <- st_transform(liu_sf, behrmann_crs)
+st_crs(liu_sf)
+st_crs(liu_sf) == st_crs(orchid_sf)
+plot(st_geometry(orchid_sf)[1], col = NA, border = "black")
+plot(st_geometry(liu_sf)[1], add = TRUE, border = "red")
+
+#Rasterize both maps on the SAME 200 km grid
+
+# Convertir la grilla de orquídeas a SpatVector
+orchid_vect <- vect(orchid_sf)
+
+# Crear raster base a partir de la extensión y resolución real de la grilla
+base_rast <- rast(
+  ext(orchid_vect),  # Usar ext() en lugar de extent()
+  resolution = 200000,  # 200 km
+  crs = crs(orchid_vect))
+base_rast
+#Rasterise orchid regionalisation
+# Rasterizar reinos de orquídeas
+orchid_realm_rast <- rasterize(
+  orchid_vect,
+  base_rast,
+  field = "realm",   # o realm_name si prefieres categórico
+  touches = TRUE)
+orchid_realm_rast
+#Rasterise angiosperms regionalisation
+library(sf)
+# 1. Hacer válidas las geometrías
+liu_sf_valid <- st_make_valid(liu_sf)
+# 2. Agregar por PhyloRealm
+liu_sf_agg <- liu_sf_valid %>%
+  group_by(PhyloRealm) %>%
+  summarise()
+# 3. Convertir a SpatVector
+liu_realms <- vect(liu_sf_agg)
+# Verificar
+liu_realms
+#rasterise
+liu_realm_rast <- rasterize(
+  liu_realms,
+  base_rast,
+  field = "PhyloRealm",
+  touches = TRUE)
+liu_realm_rast
+orchid_realm_rast <- as.int(orchid_realm_rast)
+liu_realm_rast    <- as.int(liu_realm_rast)
+common_mask <- !is.na(orchid_realm_rast) & !is.na(liu_realm_rast)
+orchid_realm_rast <- mask(orchid_realm_rast, common_mask)
+liu_realm_rast    <- mask(liu_realm_rast, common_mask)
+par(mfrow = c(1,2))
+plot(orchid_realm_rast, main = "Orchid realms (200 km)")
+plot(liu_realm_rast, main = "Liu et al. realms (resampled)")
+par(mfrow = c(1,1))
+names(orchid_realm_rast)
+names(liu_realm_rast)
+# V-measure calculation between Simpson and Sorensen
+library(sabre)
+library(ggplot2)
+liu<-vmeasure_calc(orchid_realm_rast, liu_realm_rast, x_name = realm, y_name = PhyloRealm, B = 1, precision = NULL)
+liu$map1
+#The SABRE results:
+#V-measure: 0.88 
+#Homogeneity: 0.9 
+#Completeness: 0.86 
+# Extraer la capa de rih del RasterStack
+rih_raster <- liu$map1$rih  # o liu$map1[[2]]
+# Convertir a un dataframe para ggplot
+rih_df <- as.data.frame(rih_raster, xy = TRUE, na.rm = TRUE)
+# Ahora graficar con geom_raster
+p1 <- ggplot(rih_df) +
+  geom_raster(aes(x = x, y = y, fill = rih)) +
+  scale_fill_viridis_c(option = "B", direction = -1, name = "rih") +
+  ggtitle("Realms Orchids") +
+  theme_bw(base_size = 16, base_family = "sans") +
+  coord_equal()  # Para mantener la relación de aspecto
+# Lo mismo para map2
+rih_raster2 <- liu$map2$rih
+rih_df2 <- as.data.frame(rih_raster2, xy = TRUE, na.rm = TRUE)
+p2 <- ggplot(rih_df2) +
+  geom_raster(aes(x = x, y = y, fill = rih)) +
+  scale_fill_viridis_c(option = "B", direction = -1, name = "rih") +
+  ggtitle("Realms Angiosperms") +
+  theme_bw(base_size = 16, base_family = "sans") +
+  coord_equal()
+final1<-p1 / p2
+final1
+# Goodness-of-fit between Simpson and Sorensen
+# Mapcurves calculation: It calculates the Mapcurves's goodness-of-fit (GOF)
+map.curv<-mapcurves_calc(orchid_realm_rast, liu_realm_rast, realm,PhyloRealm, precision = NULL)
+map.curv
+#The MapCurves results:
+#The goodness of fit: 0.91 
+#Reference map: x 
+#============================================================
+#============================================================
+#============================================================
+#============================================================
+  
+#combine all figures
+library(patchwork)
+
+final_assembly1 <- (wrap_elements(all) / wrap_elements(violin_sil)) + 
+  plot_layout(heights = c(2, 1)) +
+  plot_annotation(
+    tag_levels = 'a', 
+    tag_prefix = '(', 
+    tag_suffix = ')' ) & 
+  theme(plot.tag = element_text(size = 24, family = "Gill Sans"))
+final_assembly1
+ggsave("results/Figures/GEB1.png", final_assembly1, dpi = 400, width = 15, height = 18)
+ggsave(
+  filename = "results/Figures/GEB1.pdf", 
+  plot = final_assembly1,
+  device = cairo_pdf,        # Recomendado para manejar fuentes como Gill Sans correctamente
+  width = 14,                # Ancho en pulgadas
+  height = 20,               # Alto en pulgadas (más alto que ancho para 2 filas/1 col)
+  units = "in",
+  dpi = 600                  # Alta resolución para cualquier elemento ráster interno
+)
+# ============================================================
+# COMBINACIÓN FINAL
+# ============================================================
+# Usamos wrap_elements para asegurar que los temas internos 
+# de cada sub-figura no se rompan al combinarse.
+
+final_assembly2 <- (wrap_elements(completenes_200km) / wrap_elements(final_plot)) + 
+  plot_layout(heights = c(1, 3), guides = 'collect') + # 'collect' ayuda a unificar leyendas si las hay
+  plot_annotation(
+    tag_levels = 'a', 
+    tag_prefix = '(', 
+    tag_suffix = ')') & 
+  theme(
+    # 1. Ajustar tipografía de etiquetas
+    plot.tag = element_text(size = 25, family = "Gill Sans"))
+ggsave("results/Figures/GEB2.png", final_assembly2, dpi = 400, width = 15, height = 20)
+ggsave(
+  filename = "results/Figures/GEB2.pdf", 
+  plot = final_assembly2,
+  device = cairo_pdf,        # Recomendado para manejar fuentes como Gill Sans correctamente
+  width = 13,                # Ancho en pulgadas
+  height = 16,               # Alto en pulgadas (más alto que ancho para 2 filas/1 col)
+  units = "in",
+  dpi = 600                  # Alta resolución para cualquier elemento ráster interno
+)

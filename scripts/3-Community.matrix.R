@@ -323,6 +323,17 @@ stopCluster(cl)
 # Save the complete list of trees
 saveRDS(trees_list, "processed-data/community_matrix/100_random_trees.rds")
 
+# species present in the backbone
+# Species in the Smith & Brown backbone
+backbone_species <- GBOTB.extended.WP$tip.label
+# Species analysed
+analysed_species <- species.list$species
+# Match
+present_in_backbone <- analysed_species %in% backbone_species
+# Counts
+sum(present_in_backbone)        # present in Smith & Brown (2018)
+sum(!present_in_backbone)       # missing from the backbone
+
 ##########################################################################
 # Calculate average phylogenetic diversity and phylogenetic beta diversity
 # from 100 posterior phylogenetic trees
