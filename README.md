@@ -1,7 +1,15 @@
-# A global bioregionalisation for orchids
+<h1 align="center">A global bioregionalisation for orchids</h1>
 
-[![Journal](https://img.shields.io/badge/Journal-New%20Phytologist-brightgreen)](https://doi.org/10.1111/nph.71093)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17084012.svg)](https://doi.org/10.5281/zenodo.17084012)
+<p align="center">
+  <a href="https://doi.org/10.1111/nph.71093">
+    <img src="https://img.shields.io/badge/Journal-New%20Phytologist-brightgreen" alt="Journal">
+  </a>
+  <a href="https://doi.org/10.5281/zenodo.17084012">
+    <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.17084012.svg" alt="DOI">
+  </a>
+</p>
+
+---
 
 This repository contains the R code and workflows for the study **"A global bioregionalisation for orchids"**, published in *New Phytologist*. This work establishes the first hierarchical bioregionalisation system for Orchidaceae at a global scale, integrating large-scale distribution data and phylogenetic relationships.
 
