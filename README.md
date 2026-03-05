@@ -22,16 +22,18 @@ Bioregionalisation provides a framework for categorising geographic areas based 
   <em><b>Fig. 1.</b> Global orchid realms and bioregions identified at a 200 × 200 km resolution.</em>
 </p>
 
-## 2. Repository Structure
+## 2. Repository Structure (in the scripts folder)
 The workflow is organised into seven methodological steps executed in R:
 
-* **`01_data_collection.R`**: Compiling occurrence data from public databases (GBIF, RAINBIO, SpeciesLink, and ALA).
-* **`02_data_cleaning.R`**: Automated geographic cleaning and taxonomic standardisation against the *World Checklist of Vascular Plants* (WCVP) using the `rWCVP` package.
-* **`03_community_matrix.R`**: Rasterisation of records at multiple resolutions, construction of presence-absence matrices (PAMs), and calculation of $p\beta_{sim}$ averaged across 100 random tree topologies.
-* **`04_sampling_completeness.R`**: Evaluation of sampling effort using species accumulation curves (KnowBR) to assess the reliability of the bioregional patterns.
-* **`05_regionalisation.R`**: Implementation of hierarchical clustering algorithms (UPGMA) and silhouette analysis to determine the optimal spatial resolution and delimit realms and bioregions.
-* **`06_drivers_analysis.R`**: Assessing the influence of climate (CHELSA) and topography on phylogenetic dissimilarity using environmental distance modelling.
-* **`07_visualisation.R`**: Generation of NMDS ordinations, unrooted dendrograms, and final bioregionalisation maps.
+* **`2.1-Data collection.R`**: Compiling occurrence data from public databases (GBIF, RAINBIO, SpeciesLink, and ALA).
+* **`2-2-data selection.R`**: Automated geographic cleaning and taxonomic standardisation against the *World Checklist of Vascular Plants* (WCVP) using the `rWCVP` package.
+* **`3-Community.matrix.R`**: Rasterisation of records at multiple resolutions, construction of presence-absence matrices (PAMs), and calculation of $p\beta_{sim}$ averaged across 100 random tree topologies.
+* **`4-Data exploration.R`**: Evaluation of sampling effort using species accumulation curves (KnowBR) to assess the reliability of the bioregional patterns and patters of phylogenetic beta diversity
+*  **`5-Building regionalisation.R`**: Implementation of hierarchical clustering algorithms (UPGMA) to create bioregionalisaion at 200 x 200 km. 
+* **`5.1-evaluation_grain-size.R`**: Implementation of hierarchical clustering algorithms (UPGMA) and silhouette analysis to determine the optimal spatial resolution and delimit realms and bioregions.
+* * **`6-relationship.R`**: We identified transition zones between orchid realms and quantified fundamental aspects of species distribution for each realm: total species richness, endemic species, and genera indicator.
+* **`7-drivers_analysis.R`**: Assessing the influence of climate (CHELSA) and topography on phylogenetic dissimilarity using environmental distance and OLS modelS.
+
 
 ## 3. Key Findings
 
