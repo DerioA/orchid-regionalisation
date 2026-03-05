@@ -48,4 +48,4 @@ Large data files (e.g., PAMs and phylogenies) are hosted on **Zenodo**: [https:/
 
 ## Citation
 If you use this code or the results, please cite:
-> Jiménez-López, D. A., Ramírez-Barahona, S., Zizka, A., Kessler, M., Jiménez-Alfaro, B., Maza-Villalobos, S., Carmona-Higuita, M. J., de Gasper, A. L., Fay, M. F., Mendieta-Leiva, G., & Ramírez-Marcial, N. (2025). **A global bioregionalisation for orchids**. *New Phytologist*. https://doi.org/doi.org/10.1111/nph.71093
+> Jiménez-López, D. A., Ramírez-Barahona, S., Zizka, A., Kessler, M., Jiménez-Alfaro, B., Maza-Villalobos, S., Carmona-Higuita, M. J., de Gasper, A. L., Fay, M. F., Mendieta-Leiva, G., & Ramírez-Marcial, N. (2026). **A global bioregionalisation for orchids**. *New Phytologist*. https://doi.org/doi.org/10.1111/nph.71093
