@@ -31,7 +31,7 @@ The workflow is organised into seven methodological steps executed in R:
 * **`4-Data exploration.R`**: Evaluation of sampling effort using species accumulation curves (KnowBR) to assess the reliability of the bioregional patterns and patters of phylogenetic beta diversity
 *  **`5-Building regionalisation.R`**: Implementation of hierarchical clustering algorithms (UPGMA) to create bioregionalisaion at 200 x 200 km. 
 * **`5.1-evaluation_grain-size.R`**: Implementation of hierarchical clustering algorithms (UPGMA) and silhouette analysis to determine the optimal spatial resolution and delimit realms and bioregions.
-* * **`6-relationship.R`**: We identified transition zones between orchid realms and quantified fundamental aspects of species distribution for each realm: total species richness, endemic species, and genera indicator.
+* **`6-relationship.R`**: We identified transition zones between orchid realms and quantified fundamental aspects of species distribution for each realm: total species richness, endemic species, and genera indicator.
 * **`7-drivers_analysis.R`**: Assessing the influence of climate (CHELSA) and topography on phylogenetic dissimilarity using environmental distance and OLS modelS.
 
 
