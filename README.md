@@ -44,7 +44,7 @@ The workflow is organised into seven methodological steps executed in R:
 * **Sampling Completeness**: Despite lower completeness in some tropical regions, the major realm patterns remained stable across all validation tests.
 
 ## Data Availability
-Large data files (PAMs and phylogenies) are hosted on **Zenodo**: [https://doi.org/10.5281/zenodo.17084012](https://doi.org/10.5281/zenodo.17084012).
+Large data files (e.g., PAMs and phylogenies) are hosted on **Zenodo**: [https://doi.org/10.5281/zenodo.17084012](https://doi.org/10.5281/zenodo.17084012).
 
 ## Citation
 If you use this code or the results, please cite:
