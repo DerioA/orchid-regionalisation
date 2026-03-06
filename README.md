@@ -34,15 +34,6 @@ The workflow is organised into seven methodological steps executed in R:
 * **`6-relationship.R`**: We identified transition zones between orchid realms and quantified fundamental aspects of species distribution for each realm: total species richness, endemic species, and genera indicator.
 * **`7-drivers_analysis.R`**: Assessing the influence of climate (CHELSA) and topography on phylogenetic dissimilarity using environmental distance and OLS modelS.
 
-
-## 3. Key Findings
-
-* **Realms and Bioregions**: We identified **six global realms**: Australian, Andean-Patagonian, Neotropical, Afrotropical, Indo-Malayan, and Holarctic, subdivided into **ten bioregions**.
-* **Transition Zones**: Four main transition zones were identified (Mexican, South American, Northern Australian, and Chinese), where biotic components overlap.
-* **Drivers of Regionalisation**: Climate (mean annual precipitation, temperature, and seasonality) explained over 90% of the variance in most realms.
-* **Spatial Resolutions**: Patterns were tested at 100, 200, 400, and 800 km. The **200 × 200 km** resolution was selected as optimal due to its robust clustering structure.
-* **Sampling Completeness**: Despite lower completeness in some tropical regions, the major realm patterns remained stable across all validation tests.
-
 ## Data Availability
 Large data files (e.g., PAMs and phylogenies) are hosted on **Zenodo**: [https://doi.org/10.5281/zenodo.17084012](https://doi.org/10.5281/zenodo.17084012).
 
